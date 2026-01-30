@@ -2,8 +2,8 @@ import { spawn_particle, draw_particles, update_particles } from "./particle.js"
 import { keydown, keypressed, update_keyboard } from "./keyboard.js";
 import { draw_beatmap, update_beatmap } from "./beatmap.js";
 
-const HIT_OFFSET_CAP = .3;
-const HIT_PERFECT_DISTANCE = .1;
+const HIT_OFFSET_CAP = 300;
+const HIT_PERFECT_DISTANCE = 100;
 const COMBO_TEXT_COLOR = "black";
 
 var context = document.querySelector("canvas").getContext("2d");
@@ -30,25 +30,37 @@ function draw() {
 
     draw_beatmap(context);
     draw_particles(context);
-
-    requestAnimationFrame(draw);
 }
 
-let previousTime = new Date();
-function update() {
-    let now = new Date();
-    let delta = now - previousTime;
-
-    update_beatmap(delta);
+function update(delta, now) {
+    update_beatmap(delta, now);
     update_particles(delta);
     update_keyboard();
-
-    previousTime = now;
-    requestAnimationFrame(update);
+    draw();
 }
 
 resize();
-draw();
-update();
+
+if (typeof performance === "function") {
+    let previousTime = performance.now();
+    function performance_update() {
+        let now = performance.now();
+        let delta = now - previousTime;
+        update(delta, now);
+        previousTime = now;
+        requestAnimationFrame(performance_update);
+    }
+    performance_update();
+} else {
+    let previousTime = new Date();
+    function normal_update() {
+        let now = new Date().getTime();
+        let delta = now - previousTime;
+        update(delta, now);
+        previousTime = now;
+        requestAnimationFrame(normal_update);
+    }
+    normal_update();
+}
 
 export { context, COMBO_TEXT_COLOR, HIT_OFFSET_CAP, HIT_PERFECT_DISTANCE, grid, rhythm_radius, beat_radius }
