@@ -48,6 +48,9 @@ function abc_blocks(text, cx, cy, t) {
         context.font = random_style + Math.round(w) + "px " + random_font;
         context.textAlign = "center";
         context.textBaseline = "middle";
+        context.lineWidth = 4;
+        context.strokeStyle = "white";
+        context.strokeText(char, 0, 0);
         context.fillText(char, 0, 0);
 
         context.restore();
@@ -274,11 +277,15 @@ function draw_rhythm(rhythm) {
     } else {
         keyText = keyText.replaceAll("Key", "");
         keyText = keyText.replaceAll("Digit", "");
+        keyText = keyText.replaceAll("Control", "Ctrl");
     }
     
     if (keyText) {
         context.fillStyle = rhythm.color;
+        context.save();
+        context.scale(0.8, 0.8);
         abc_blocks(keyText, 0, 0, rhythm.subdivisions.length + rhythm.combo);
+        context.restore();
     }
 
     let dot_alpha = Math.max(Math.min(1 - (beatmap.spawnTime + rhythm.spawnTime - beatmap.time) / beat_length(rhythm), 1), 0);
@@ -662,6 +669,7 @@ function spawn_hit_perfect_particle(rhythm, subdivision) {
             y: rhythm.position[1] * grid,
             draw: function(context) {
                 context.save();
+                context.globalCompositeOperation = "destination-over";
                 context.globalAlpha = this.lifetime / (beat_length(rhythm) * 1000);
                 context.strokeStyle = rhythm.color;
                 draw_rhythm_shape(context, rhythm, this.x, this.y);
