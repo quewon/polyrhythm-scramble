@@ -272,7 +272,7 @@ function draw_circles(context) {
 
         context.lineWidth = 2;
 
-        context.strokeStyle = "lightgray";
+        context.strokeStyle = "black";
         context.beginPath();
         context.arc(0, 0, rhythm_radius, rhythm_radius, 0, Math.PI * 2);
         context.stroke();
@@ -357,11 +357,10 @@ function draw_rhythm(context, rhythm) {
             default:
                 context.save();
                     context.strokeStyle = "lightgray";
-                    context.globalAlpha = 0.2;
                     context.stroke();
                 context.restore();
                 context.save();
-                    context.globalAlpha = dot_alpha * 0.2;
+                    context.globalAlpha = dot_alpha;
                     context.strokeStyle = rhythm.color;
                     context.stroke();
                 context.restore();
@@ -415,6 +414,28 @@ function draw_beatmap(context) {
             
             for (let rhythm of beatmap.rhythms) {
                 draw_rhythm(context, rhythm);
+            }
+
+            if (beatmap.combo < 4) {
+                context.save();
+                context.globalAlpha = 1 - beatmap.combo / 4;
+
+                context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
+                context.textAlign = "left";
+                context.textBaseline = "bottom";
+                context.fillStyle = "black";
+                context.fillText(beatmap.bpm + " BPM", -grid + 10, grid);
+                context.textBaseline = "top";
+                context.fillText(clears + " CLEARS", -grid + 10, -grid);
+
+                context.textAlign = "center";
+                context.textBaseline = "middle";
+                for (let rhythm of beatmap.rhythms) {
+                    context.fillText(rhythm.subdivisions.length, rhythm.position[0] * grid, grid/1.6);
+                }
+                context.fillText(":", 0, grid/1.6)
+
+                context.restore();
             }
         } else {
             draw_score(context);
@@ -723,7 +744,7 @@ function spawn_perfect_particle(rhythm) {
 }
 
 function spawn_hit_perfect_particle(rhythm, subdivision) {
-    if (rhythm.combo >= rhythm.subdivisions.length) {
+    if (rhythm.subdivisions.length > 1 && rhythm.combo >= rhythm.subdivisions.length) {
         spawn_particle({
             lifetime: beat_length(rhythm),
             x: rhythm.position[0] * grid,
