@@ -1,17 +1,11 @@
 import { spawn_particle, draw_particles, update_particles } from "./particle.js";
 import { keydown, keypressed, update_keyboard } from "./keyboard.js";
 import { draw_beatmap, update_beatmap } from "./beatmap.js";
-import audioContext from "./audioContext.js";
-import AudioSprite from "./AudioSprite.js";
-
-const HIT_OFFSET_CAP = 300;
-const HIT_PERFECT_DISTANCE = 100;
-const COMBO_TEXT_COLOR = "black";
-const TITLE_FONT_SCALE = 1 / 8;
-const INFO_FONT_SCALE = 1 / 10;
-const KEY_FONT_SCALE = 1 / 10;
 
 var context = document.querySelector("canvas").getContext("2d");
+var aspect = 3/4;
+var width;
+var height;
 var grid;
 var rhythm_radius;
 var beat_radius;
@@ -22,9 +16,17 @@ function resize() {
     context.canvas.width = window.innerWidth * window.devicePixelRatio;
     context.canvas.height = window.innerHeight * window.devicePixelRatio;
 
-    grid = Math.min(window.innerWidth, window.innerHeight) / 4;
+    width = Math.min(500, window.innerWidth);
+    height = Math.min(500, window.innerHeight);
+    if (width / aspect > height) {
+        width = height * aspect;
+    } else {
+        height = width / aspect;
+    }
+
+    grid = width / 2;
     rhythm_radius = grid / 2 * 0.9;
-    beat_radius = window.devicePixelRatio * 3;
+    beat_radius = Math.max(window.devicePixelRatio * 3, grid / 30);
 }
 
 function draw() {
@@ -32,6 +34,10 @@ function draw() {
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     context.translate(context.canvas.width/2, context.canvas.height/2);
     context.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+    // context.strokeStyle = "lightgray";
+    // context.lineWidth = 1;
+    // context.strokeRect(-width/2, -height/2, width, height);
 
     draw_beatmap(context);
     draw_particles(context);
@@ -67,4 +73,4 @@ if (typeof performance === "function") {
     normal_update();
 }
 
-export { context, TITLE_FONT_SCALE, INFO_FONT_SCALE, KEY_FONT_SCALE, COMBO_TEXT_COLOR, HIT_OFFSET_CAP, HIT_PERFECT_DISTANCE, grid, rhythm_radius, beat_radius }
+export { grid, rhythm_radius, beat_radius }

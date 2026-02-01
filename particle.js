@@ -6,7 +6,11 @@ function spawn_particle(particle) {
     //     draw: function,
     //     lifetime: milliseconds
     // }
-    particles.push(particle)
+    particles.push(particle);
+}
+
+function particles_count() {
+    return particles.length;
 }
 
 function draw_particles(context) {
@@ -16,21 +20,15 @@ function draw_particles(context) {
 }
 
 function update_particles(delta) {
-    var to_delete = [];
-
     for (let particle of particles) {
         particle.update(delta);
         particle.lifetime -= delta;
-        if (particle.lifetime <= 0) {
-            to_delete.push(particle);
-            continue;
-        }
     }
 
     for (let i=particles.length-1; i>=0; i--) {
-        if (to_delete.includes(particles[i]))
+        if (particles[i].lifetime <= 0)
             particles.splice(i, 1);
     }
 }
 
-export { spawn_particle, draw_particles, update_particles }
+export { particles_count, spawn_particle, draw_particles, update_particles }

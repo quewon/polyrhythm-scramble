@@ -1,11 +1,22 @@
-import { spawn_particle } from "./particle.js";
+import { particles_count, spawn_particle } from "./particle.js";
 import { keydown, keypressed } from "./keyboard.js";
 import audioContext from "./audioContext.js";
 import AudioSprite from "./AudioSprite.js";
 import ImageSprite from "./ImageSprite.js";
-import { context, TITLE_FONT_SCALE, INFO_FONT_SCALE, KEY_FONT_SCALE, COMBO_TEXT_COLOR, HIT_OFFSET_CAP, HIT_PERFECT_DISTANCE, grid, rhythm_radius, beat_radius } from "./game.js";
+import { grid, rhythm_radius, beat_radius } from "./game.js";
+import { smoothstep } from "./util.js";
 
-var respacks = [
+const HIT_OFFSET_CAP = 300;
+const HIT_PERFECT_DISTANCE = 100;
+const TITLE_FONT_SCALE = 1 / 8;
+const INFO_FONT_SCALE = 1 / 10;
+const KEY_FONT_SCALE = 1 / 10;
+const COMBO_TEXT_COLOR = "lightgray";
+const COMBO_FONT_SCALE = 4;
+const MISS_PARTICLE_SCALE = 0.7;
+const UI_FONT = "'Arial Narrow', system-ui, sans-serif";
+
+var soundpacks = [
     {
         hitSounds: [
             new AudioSprite({ src: "res/packs/doubles/cheer/1.wav" }),
@@ -17,9 +28,6 @@ var respacks = [
             new AudioSprite({ src: "res/packs/doubles/cheer/countdown/2.wav" }),
             new AudioSprite({ src: "res/packs/doubles/cheer/countdown/1.wav" }),
         ],
-        hitPerfectImage: new ImageSprite({ src: "res/images/perfect.png" }),
-        hitOKImage: new ImageSprite({ src: "res/images/ok.png" }),
-        missImage: new ImageSprite({ src: "res/images/miss.png" }),
         metronomeSound: new AudioSprite({ src: "res/packs/doubles/cheer/metronome.wav" }),
         countinSound: new AudioSprite({ src: "res/packs/doubles/cheer/countin.wav" }),
     },
@@ -34,21 +42,19 @@ var respacks = [
             new AudioSprite({ src: "res/packs/doubles/glass/countdown/2.wav" }),
             new AudioSprite({ src: "res/packs/doubles/glass/countdown/1.wav" }),
         ],
-        hitPerfectImage: new ImageSprite({ src: "res/images/perfect.png" }),
-        hitOKImage: new ImageSprite({ src: "res/images/ok.png" }),
-        missImage: new ImageSprite({ src: "res/images/miss.png" }),
         metronomeSound: new AudioSprite({ src: "res/packs/doubles/glass/metronome.wav" }),
         countinSound: new AudioSprite({ src: "res/packs/doubles/glass/countin.wav" }),
     }
 ]
+var sprites = {
+    hitPerfectImage: new ImageSprite({ src: "res/images/perfect.png" }),
+    missImage: new ImageSprite({ src: "res/images/miss.png" })
+}
 var beatmap;
 var clears = 0;
 
-var latency;
-var hit_bias = -0.5;
-
 function generate_beatmap() {
-    let respack = respacks[respacks.length * Math.random() | 0];
+    let respack = soundpacks[soundpacks.length * Math.random() | 0];
     let bpm;
     let pick;
     let keys;
@@ -137,6 +143,7 @@ function start_beatmap(now) {
     beatmap.localElapsed = 0;
     beatmap.adjustedElapsed = 0;
     beatmap.elapsed = 0;
+    beatmap.combo = 0;
     beatmap.roundCombo = 0;
     for (let rhythm of beatmap.rhythms) {
         rhythm.combo = 0;
@@ -152,8 +159,8 @@ function clear_beatmap() {
     clears++;
 }
 
-function abc_blocks(text, size, cx, cy, t) {
-    let fonts = ["'Times New Roman', serif", "'Arial', 'Helvetica', sans-serif", "'Courier', monospace", "'Select Mono Italic'", "'Papyrus', 'Comic Sans MS'"];
+function abc_blocks(context, text, size, cx, cy, t, noStroke) {
+    let fonts = ["'Times New Roman', serif", "'Arial', 'Helvetica', sans-serif", "'Courier', monospace", UI_FONT, "'Papyrus', 'Comic Sans MS'"];
     let styles = ["", "italic ", "bold "];
 
     t = t || 0;
@@ -187,8 +194,10 @@ function abc_blocks(text, size, cx, cy, t) {
         context.textAlign = "center";
         context.textBaseline = "middle";
         context.lineWidth = 4;
-        context.strokeStyle = "white";
-        context.strokeText(char, 0, 0);
+        if (!noStroke) {
+            context.strokeStyle = "white";
+            context.strokeText(char, 0, 0);
+        }
         context.fillText(char, 0, 0);
 
         context.restore();
@@ -197,17 +206,17 @@ function abc_blocks(text, size, cx, cy, t) {
 
 function draw_intro(context) {
     context.fillStyle = "black";
-    abc_blocks("polyrhythm", grid * TITLE_FONT_SCALE, 0, -grid/2);
-    abc_blocks("scramble", grid * TITLE_FONT_SCALE, 0, -grid/3, 3);
+    abc_blocks(context, "polyrhythm", grid * TITLE_FONT_SCALE, 0, -grid/2);
+    abc_blocks(context, "scramble", grid * TITLE_FONT_SCALE, 0, -grid/3, 3);
 
-    context.font = (grid * INFO_FONT_SCALE) + "px 'Select Mono Italic'";
+    context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillText("[ANY KEY] TO BEGIN", 0, 0);
 }
 
 function draw_score(context) {
-    context.font = (grid * INFO_FONT_SCALE) + "px 'Select Mono Italic'";
+    context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillText(clears + " ROUND(s) CLEARED", 0, -grid/2);
@@ -246,41 +255,37 @@ function beat_length(rhythm) {
     return 60 / beatmap.bpm * 4000 / rhythm.subdivisions.length;
 }
 
+function rhythm_context_save(context, rhythm) {
+    if (beatmap.adjustedElapsed < rhythm.spawnTime - beatmap.spawnLeadup) return false;
+    context.save();
+    if (beatmap.adjustedElapsed < rhythm.spawnTime) {
+        context.globalAlpha = 1 - (rhythm.spawnTime - beatmap.adjustedElapsed) / beatmap.spawnLeadup;
+    }
+    context.translate(rhythm.position[0] * grid, rhythm.position[1] * grid);
+    return true;
+}
+
 function draw_circles(context) {
     for (let rhythm of beatmap.rhythms) {
-        if (beatmap.adjustedElapsed < rhythm.spawnTime - beatmap.spawnLeadup) continue;
+        if (!rhythm_context_save(context, rhythm))
+            continue;
 
-        context.save();
-
-        if (beatmap.adjustedElapsed < rhythm.spawnTime) {
-            context.globalAlpha = 1 - (rhythm.spawnTime - beatmap.adjustedElapsed) / beatmap.spawnLeadup;
-        }
-        
-        if (rhythm.position) {
-            context.translate(rhythm.position[0] * grid, rhythm.position[1] * grid);
-        }
+        context.lineWidth = 2;
 
         context.strokeStyle = "lightgray";
         context.beginPath();
         context.arc(0, 0, rhythm_radius, rhythm_radius, 0, Math.PI * 2);
         context.stroke();
 
+        context.fillStyle = "white";
+        context.fill();
+
         context.restore();
     }
 }
 
-function draw_rhythm(rhythm) {
-    if (beatmap.adjustedElapsed < rhythm.spawnTime - beatmap.spawnLeadup) return;
-
-    context.save();
-
-    if (beatmap.adjustedElapsed < rhythm.spawnTime) {
-        context.globalAlpha = 1 - (rhythm.spawnTime - beatmap.adjustedElapsed) / beatmap.spawnLeadup;
-    }
-
-    if (rhythm.position) {
-        context.translate(rhythm.position[0] * grid, rhythm.position[1] * grid);
-    }
+function draw_key_text(context, rhythm) {
+    if (!rhythm_context_save(context, rhythm)) return;
 
     let keyText = rhythm.keyCode;
     if (!keyText) {
@@ -300,16 +305,26 @@ function draw_rhythm(rhythm) {
     if (keyText) {
         context.fillStyle = rhythm.color;
         if (keyText === "[ANY KEY]") {
-            context.font = (grid * KEY_FONT_SCALE) + "px 'Select Mono Italic'";
+            context.textAlign = "center";
+            context.textBaseline = "middle";
+            context.font = (grid * KEY_FONT_SCALE) + "px " + UI_FONT;
+            context.strokeStyle = "white";
+            context.strokeText(keyText, 0, 0);
             context.fillText(keyText, 0, 0);
         } else {
-            abc_blocks(keyText, grid * KEY_FONT_SCALE, 0, 0, rhythm.subdivisions.length + rhythm.combo);
+            abc_blocks(context, keyText, grid * KEY_FONT_SCALE, 0, 0, rhythm.subdivisions.length + rhythm.combo);
         }
     }
 
+    context.restore();
+}
+
+function draw_rhythm(context, rhythm) {
+    if (!rhythm_context_save(context, rhythm)) return;
+
     let dot_alpha = Math.max(Math.min(1 - (rhythm.spawnTime - beatmap.adjustedElapsed) / beat_length(rhythm), 1), 0);
 
-    context.lineWidth = window.devicePixelRatio;
+    context.lineWidth = 2;
 
     for (
         let i = 0; 
@@ -365,6 +380,8 @@ function draw_rhythm(rhythm) {
 
     context.restore();
 
+    draw_key_text(context, rhythm);
+
     // context.save();
     // context.globalAlpha = 0.5;
     // let cap = Math.min(beat_length(rhythm) / 2, HIT_OFFSET_CAP);
@@ -397,7 +414,7 @@ function draw_beatmap(context) {
             draw_circles(context);
             
             for (let rhythm of beatmap.rhythms) {
-                draw_rhythm(rhythm);
+                draw_rhythm(context, rhythm);
             }
         } else {
             draw_score(context);
@@ -408,8 +425,6 @@ function draw_beatmap(context) {
 }
 
 function update_beatmap(delta, now) {
-    latency = (audioContext.baseLatency + audioContext.outputLatency) * 1000;
-
     if (beatmap && 'startTime' in beatmap) {
         if (!beatmap.done) {
             if (beatmap.roundCombo > 0) {
@@ -417,7 +432,8 @@ function update_beatmap(delta, now) {
                     clear_beatmap();
                 }
             }
-
+            
+            let latency = (audioContext.baseLatency + audioContext.outputLatency) * 1000;
             beatmap.currentTime = now;
             beatmap.elapsed = now - beatmap.startTime;
             beatmap.localElapsed = beatmap.elapsed - beatmap.spawnTime;
@@ -519,6 +535,7 @@ function update_beatmap(delta, now) {
                         rhythm.previousMiss = rhythm.previousBeat;
                     }
                     rhythm.combo = 0;
+                    beatmap.combo = 0;
                     rhythm.roundCombo = 0;
                     beatmap.roundCombo = 0;
                 }
@@ -533,6 +550,7 @@ function update_beatmap(delta, now) {
                 ) {
                     rhythm.previousHit = closestBeat;
                     rhythm.combo++;
+                    beatmap.combo++;
                     rhythm.roundCombo++;
                     spawn_perfect_particle(rhythm, closestSubdivision);
                 }
@@ -545,24 +563,19 @@ function update_beatmap(delta, now) {
                     if (
                         rhythm.subdivisions[closestSubdivision] && 
                         rhythm.previousHit !== closestBeat && 
-                        distance < HIT_OFFSET_CAP
+                        distance <= Math.min(HIT_PERFECT_DISTANCE, beat_length(rhythm) / 2)
                     ) {
                         beatmap.respack.hitSounds[rhythmIndex].play();
                         rhythm.previousHit = closestBeat;
-                        if (distance < HIT_PERFECT_DISTANCE) {
-                            rhythm.combo++;
-                            rhythm.roundCombo++;
-                            spawn_hit_perfect_particle(rhythm, closestSubdivision);
-                        } else {
-                            rhythm.combo = 0;
-                            rhythm.roundCombo = 0;
-                            beatmap.roundCombo = 0;
-                            spawn_hit_ok_particle(rhythm, .7);
-                        }
+                        rhythm.combo++;
+                        beatmap.combo++;
+                        rhythm.roundCombo++;
+                        spawn_hit_perfect_particle(rhythm, closestSubdivision);
                     } else {
                         spawn_miss_particle(rhythm, playhead_position(rhythm) / beat_length(rhythm));
                         rhythm.previousMiss = closestBeat;
                         rhythm.combo = 0;
+                        beatmap.combo = 0;
                         rhythm.roundCombo = 0;
                         beatmap.roundCombo = 0;
                     }
@@ -600,27 +613,64 @@ function update_beatmap(delta, now) {
 }
 
 function spawn_roundcombo_particle() {
-    const lifetime = 1000;
-    spawn_particle({
-        lifetime: lifetime,
-        x: 0,
-        y: -grid / 1.5,
-        draw: function(context) {
-            if (beatmap.roundCombo <= 0) return;
+    let image = new OffscreenCanvas(
+        window.innerWidth * window.devicePixelRatio,
+        window.innerHeight * window.devicePixelRatio
+    );
+    let offscreenContext = image.getContext("2d");
 
+    offscreenContext.translate(image.width/2, image.height/2);
+    offscreenContext.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+    for (const rhythm of beatmap.rhythms) {
+        let x = (rhythm.position[0] + (Math.random() - 0.5)) * grid;
+        let y = (rhythm.position[1] + (Math.random() * 2 - 1)) * grid;
+        let scale = 2;
+
+        offscreenContext.save();
+        offscreenContext.translate(x, y);
+        offscreenContext.scale(scale, scale);
+        offscreenContext.globalCompositeOperation = "lighter";
+        draw_rhythm_shape(offscreenContext, rhythm, 0, 0);
+        if (rhythm.subdivisions.length === 2) {
+            offscreenContext.lineWidth = grid / 8;
+            offscreenContext.strokeStyle = rhythm.color;
+            offscreenContext.stroke();
+        } else {
+            offscreenContext.fillStyle = rhythm.color;
+            offscreenContext.fill();
+        }
+        offscreenContext.restore();
+    }
+
+    offscreenContext.save();
+    for (let x=-window.innerWidth/2; x<=window.innerWidth/2; x+=10 + window.devicePixelRatio) {
+        offscreenContext.clearRect(x, -window.innerHeight/2, 10, window.innerHeight);
+    }
+    for (let y=-window.innerHeight/2; y<=window.innerHeight/2; y+=10 + window.devicePixelRatio) {
+        offscreenContext.clearRect(-window.innerWidth/2, y, window.innerWidth, 10);
+    }
+    offscreenContext.restore();
+
+    offscreenContext.save();
+    offscreenContext.globalCompositeOperation = "destination-over";
+    offscreenContext.fillStyle = COMBO_TEXT_COLOR;
+    let subdivisionsSum = 0;
+    for (let rhythm of beatmap.rhythms) {
+        subdivisionsSum += rhythm.subdivisions.length;
+    }
+    abc_blocks(offscreenContext, 5 - beatmap.roundCombo + "", grid * COMBO_FONT_SCALE, 0, 0, beatmap.roundCombo + subdivisionsSum, true);
+    offscreenContext.restore();
+
+    spawn_particle({
+        lifetime: beatmap.measure / 2,
+        draw: function(context) {
             context.save();
-            context.globalAlpha = this.lifetime / lifetime;
-            context.fillStyle = COMBO_TEXT_COLOR;
-            let subdivisionsSum = 0;
-            for (let rhythm of beatmap.rhythms) {
-                subdivisionsSum += rhythm.subdivisions.length;
-            }
-            abc_blocks(5 - beatmap.roundCombo + "", grid * TITLE_FONT_SCALE, this.x, this.y, beatmap.roundCombo + subdivisionsSum);
+            context.globalCompositeOperation = "destination-over";
+            context.drawImage(image, -window.innerWidth/2, -window.innerHeight/2, window.innerWidth, window.innerHeight);
             context.restore();
         },
-        update: function(delta) {
-            this.y -= delta / 100;
-        }
+        update: function() { }
     })
 }
 
@@ -631,15 +681,15 @@ function spawn_miss_particle(rhythm, subdivision) {
         lifetime: lifetime,
         x: rhythm.position[0] * grid + rhythm_radius * Math.cos(angle),
         y: rhythm.position[1] * grid + rhythm_radius * Math.sin(angle),
-        imageSize: beat_radius * 8 * .7,
-        r: beat_radius * 2 * .7,
+        imageSize: beat_radius * 8 * MISS_PARTICLE_SCALE,
+        r: beat_radius * 2 * MISS_PARTICLE_SCALE,
         rotation: Math.random() * Math.PI - Math.PI/2,
         draw: function(context) {
             context.save();
             context.globalAlpha = this.lifetime / lifetime * 2;
             context.translate(this.x, this.y);
             context.rotate(this.rotation);
-            beatmap.respack.missImage.draw(context, 0, 0, this.imageSize, this.imageSize);
+            sprites.missImage.draw(context, 0, 0, this.imageSize, this.imageSize);
             context.restore();
         },
         update: function(delta) { }
@@ -662,7 +712,7 @@ function spawn_perfect_particle(rhythm) {
             context.globalAlpha = this.lifetime / lifetime * 2;
             context.translate(this.x, this.y);
             context.rotate(this.rotation);
-            beatmap.respack.hitPerfectImage.draw(context, 0, 0, this.imageSize, this.imageSize);
+            sprites.hitPerfectImage.draw(context, 0, 0, this.imageSize, this.imageSize);
             context.restore();
         },
         update: function() {
@@ -680,18 +730,18 @@ function spawn_hit_perfect_particle(rhythm, subdivision) {
             y: rhythm.position[1] * grid,
             draw: function(context) {
                 context.save();
-                if (rhythm.subdivisions.length === 2) {
-                    context.globalCompositeOperation = "destination-over";
-                }
                 context.globalAlpha = this.lifetime / beat_length(rhythm);
                 context.strokeStyle = rhythm.color;
                 draw_rhythm_shape(context, rhythm, this.x, this.y);
                 context.stroke();
                 context.restore();
+                if (rhythm.subdivisions.length === 2) {
+                    draw_key_text(context, rhythm);
+                }
             },
             update: function(delta) {
-                if (beatmap.done && this.lifetime > 500)
-                    this.lifetime = 500;
+                if (beatmap.done)
+                    this.lifetime = 0;
             }
         })
     }
@@ -699,24 +749,24 @@ function spawn_hit_perfect_particle(rhythm, subdivision) {
     let angle = (subdivision * Math.PI * 2 / rhythm.subdivisions.length) - Math.PI / 2;
     const lifetime = 60 / beatmap.bpm * 1000;
 
-    const gradient = context.createRadialGradient(
-        rhythm_radius * Math.cos(angle),
-        rhythm_radius * Math.sin(angle),
-        0,
-        rhythm_radius * Math.cos(angle),
-        rhythm_radius * Math.sin(angle),
-        rhythm_radius * 2
-    );
-    gradient.addColorStop(0, rhythm.color);
-    gradient.addColorStop(1, "white");
+    var gradient;
 
     spawn_particle({
         lifetime: lifetime,
         x: rhythm.position[0] * grid,
         y: rhythm.position[1] * grid,
         draw: function(context) {
+            if (!gradient) {
+                let x = rhythm_radius * Math.cos(angle);
+                let y = rhythm_radius * Math.sin(angle);
+                gradient = context.createRadialGradient(
+                    x, y, 0, x, y, rhythm_radius * 2.5
+                );
+                gradient.addColorStop(0, rhythm.color);
+                gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+            }
+            
             context.save();
-            context.globalCompositeOperation = "destination-over";
             context.globalAlpha = this.lifetime / lifetime / 4;
             context.fillStyle = gradient;
             context.translate(this.x, this.y);
@@ -733,32 +783,6 @@ function spawn_hit_perfect_particle(rhythm, subdivision) {
     })
 
     spawn_perfect_particle(rhythm);
-}
-
-function spawn_hit_ok_particle(rhythm, scale = 1) {
-    const lifetime = 60 / beatmap.bpm * 1000;
-    let playhead = playhead_position(rhythm) / beatmap.measure * Math.PI * 2 - Math.PI / 2;
-
-    spawn_particle({
-        lifetime: lifetime,
-        x: rhythm.position[0] * grid + rhythm_radius * Math.cos(playhead),
-        y: rhythm.position[1] * grid + rhythm_radius * Math.sin(playhead),
-        imageSize: beat_radius * 8 * scale,
-        r: beat_radius * 2 * scale,
-        rotation: Math.random() * Math.PI - Math.PI/2,
-        draw: function(context) {
-            context.save();
-            context.globalAlpha = this.lifetime / lifetime * 2;
-            context.translate(this.x, this.y);
-            context.rotate(this.rotation);
-            beatmap.respack.hitOKImage.draw(context, 0, 0, this.imageSize, this.imageSize);
-            context.restore();
-        },
-        update: function() {
-            if (beatmap.done)
-                this.lifetime = 0;
-        }
-    })
 }
 
 export { draw_beatmap, update_beatmap };
