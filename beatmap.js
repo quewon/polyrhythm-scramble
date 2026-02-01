@@ -365,30 +365,30 @@ function draw_rhythm(rhythm) {
 
     context.restore();
 
-    context.save();
-    context.globalAlpha = 0.5;
-    let cap = Math.min(beat_length(rhythm) / 2, HIT_OFFSET_CAP);
-    let perfect_cap = Math.min(beat_length(rhythm) / 2, HIT_PERFECT_DISTANCE);
-    for (let i=0; i<rhythm.subdivisions.length; i++) {
-        context.fillStyle = "yellow";
-        let a = (i * beat_length(rhythm) - cap) / beatmap.measure;
-        let b = (i * beat_length(rhythm) + cap) / beatmap.measure;
-        context.beginPath();
-        context.arc(rhythm.position[0] * grid, rhythm.position[1] * grid, rhythm_radius, a * Math.PI*2 - Math.PI/2, b * Math.PI*2 - Math.PI/2);
-        context.lineTo(rhythm.position[0] * grid, rhythm.position[1] * grid);
-        context.closePath();
-        context.fill();
+    // context.save();
+    // context.globalAlpha = 0.5;
+    // let cap = Math.min(beat_length(rhythm) / 2, HIT_OFFSET_CAP);
+    // let perfect_cap = Math.min(beat_length(rhythm) / 2, HIT_PERFECT_DISTANCE);
+    // for (let i=0; i<rhythm.subdivisions.length; i++) {
+    //     context.fillStyle = "yellow";
+    //     let a = (i * beat_length(rhythm) - cap) / beatmap.measure;
+    //     let b = (i * beat_length(rhythm) + cap) / beatmap.measure;
+    //     context.beginPath();
+    //     context.arc(rhythm.position[0] * grid, rhythm.position[1] * grid, rhythm_radius, a * Math.PI*2 - Math.PI/2, b * Math.PI*2 - Math.PI/2);
+    //     context.lineTo(rhythm.position[0] * grid, rhythm.position[1] * grid);
+    //     context.closePath();
+    //     context.fill();
 
-        context.fillStyle = "greenyellow";
-        a = (i * beat_length(rhythm) - perfect_cap) / beatmap.measure;
-        b = (i * beat_length(rhythm) + perfect_cap) / beatmap.measure;
-        context.beginPath();
-        context.arc(rhythm.position[0] * grid, rhythm.position[1] * grid, rhythm_radius, a * Math.PI*2 - Math.PI/2, b * Math.PI*2 - Math.PI/2);
-        context.lineTo(rhythm.position[0] * grid, rhythm.position[1] * grid);
-        context.closePath();
-        context.fill();
-    }
-    context.restore();
+    //     context.fillStyle = "greenyellow";
+    //     a = (i * beat_length(rhythm) - perfect_cap) / beatmap.measure;
+    //     b = (i * beat_length(rhythm) + perfect_cap) / beatmap.measure;
+    //     context.beginPath();
+    //     context.arc(rhythm.position[0] * grid, rhythm.position[1] * grid, rhythm_radius, a * Math.PI*2 - Math.PI/2, b * Math.PI*2 - Math.PI/2);
+    //     context.lineTo(rhythm.position[0] * grid, rhythm.position[1] * grid);
+    //     context.closePath();
+    //     context.fill();
+    // }
+    // context.restore();
 }
 
 function draw_beatmap(context) {
