@@ -1,6 +1,7 @@
 import { spawn_particle, draw_particles, update_particles } from "./particle.js";
 import { keydown, keypressed, update_keyboard } from "./keyboard.js";
 import { draw_beatmap, update_beatmap } from "./beatmap.js";
+import "./touch.js";
 
 var context = document.querySelector("canvas").getContext("2d");
 var aspect = 3/4;
