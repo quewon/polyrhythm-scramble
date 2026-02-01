@@ -1,10 +1,15 @@
 import { spawn_particle, draw_particles, update_particles } from "./particle.js";
 import { keydown, keypressed, update_keyboard } from "./keyboard.js";
 import { draw_beatmap, update_beatmap } from "./beatmap.js";
+import audioContext from "./audioContext.js";
+import AudioSprite from "./AudioSprite.js";
 
 const HIT_OFFSET_CAP = 300;
 const HIT_PERFECT_DISTANCE = 100;
 const COMBO_TEXT_COLOR = "black";
+const TITLE_FONT_SCALE = 1 / 8;
+const INFO_FONT_SCALE = 1 / 10;
+const KEY_FONT_SCALE = 1 / 10;
 
 var context = document.querySelector("canvas").getContext("2d");
 var grid;
@@ -31,7 +36,6 @@ function draw() {
     draw_beatmap(context);
     draw_particles(context);
 }
-
 function update(delta, now) {
     update_beatmap(delta, now);
     update_particles(delta);
@@ -63,4 +67,4 @@ if (typeof performance === "function") {
     normal_update();
 }
 
-export { context, COMBO_TEXT_COLOR, HIT_OFFSET_CAP, HIT_PERFECT_DISTANCE, grid, rhythm_radius, beat_radius }
+export { context, TITLE_FONT_SCALE, INFO_FONT_SCALE, KEY_FONT_SCALE, COMBO_TEXT_COLOR, HIT_OFFSET_CAP, HIT_PERFECT_DISTANCE, grid, rhythm_radius, beat_radius }

@@ -1,4 +1,4 @@
-var audioContext = new AudioContext();
+import audioContext from "./audioContext.js";
 
 export default class AudioSprite {
     src;
