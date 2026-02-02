@@ -143,6 +143,8 @@ function start_beatmap(now) {
     beatmap.localElapsed = 0;
     beatmap.adjustedElapsed = 0;
     beatmap.elapsed = 0;
+    beatmap.maxCombo = 0;
+    beatmap.totalMisses = 0;
     beatmap.combo = 0;
     beatmap.roundCombo = 0;
     for (let rhythm of beatmap.rhythms) {
@@ -155,6 +157,8 @@ function start_beatmap(now) {
 }
 
 function clear_beatmap() {
+    if (beatmap.combo > beatmap.maxCombo)
+        beatmap.maxCombo = beatmap.combo;
     beatmap.done = true;
     clears++;
 }
@@ -212,15 +216,38 @@ function draw_intro(context) {
     context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillText("[ANY KEY] TO BEGIN", 0, 0);
+    context.fillText("[ANY KEY] TO BEGIN", 0, grid/2);
 }
 
 function draw_score(context) {
     context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
     context.textAlign = "center";
+    context.textBaseline = "top";
+    context.fillText(clears + " ROUND(S) CLEARED", 0, -grid);
+    
     context.textBaseline = "middle";
-    context.fillText(clears + " ROUND(s) CLEARED", 0, -grid/2);
-    context.fillText("[ANY KEY] TO CONTINUE", 0, 0);
+    let lines = [
+        beatmap.bpm + " BPM",
+        beatmap.rhythms[0].subdivisions.length + ":" + beatmap.rhythms[1].subdivisions.length,
+        "x" + beatmap.maxCombo + " COMBO",
+        beatmap.totalMisses + " MISS(ES)"
+    ]
+    let width = 0;
+    let padding = grid / 16;
+    let lineheight = grid * INFO_FONT_SCALE * 1.5;
+    let height = lineheight * lines.length;
+    for (let i=0; i<lines.length; i++) {
+        let mm = context.measureText(lines[i]);
+        if (mm.width > width) width = mm.width;
+    }
+    context.strokeStyle = "black";
+    context.strokeRect(-width/2 - padding, -height/2 - padding, width + padding * 2, height + padding * 2);
+    for (let i=0; i<lines.length; i++) {
+        context.fillText(lines[i], 0, -height/2 + lineheight * (i + 0.5));
+    }
+
+    context.textBaseline = "bottom";
+    context.fillText("[ANY KEY] TO CONTINUE", 0, grid);
 }
 
 function draw_rhythm_shape(context, rhythm, rx, ry) {
@@ -410,32 +437,33 @@ function draw_rhythm(context, rhythm) {
 function draw_beatmap(context) {
     if (beatmap && 'startTime' in beatmap) {
         if (!beatmap.done) {
-            draw_circles(context);
-            
-            for (let rhythm of beatmap.rhythms) {
-                draw_rhythm(context, rhythm);
-            }
-
-            if (beatmap.combo < 4) {
-                context.save();
-                context.globalAlpha = 1 - beatmap.combo / 4;
-
-                context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
-                context.textAlign = "left";
-                context.textBaseline = "bottom";
-                context.fillStyle = "black";
-                context.fillText(beatmap.bpm + " BPM", -grid + 10, grid);
-                context.textBaseline = "top";
-                context.fillText(clears + " CLEARS", -grid + 10, -grid);
-
-                context.textAlign = "center";
-                context.textBaseline = "middle";
+            if (!('clearTime' in beatmap)) {
+                draw_circles(context);
+                
                 for (let rhythm of beatmap.rhythms) {
-                    context.fillText(rhythm.subdivisions.length, rhythm.position[0] * grid, grid/1.6);
+                    draw_rhythm(context, rhythm);
                 }
-                context.fillText(":", 0, grid/1.6)
 
-                context.restore();
+                if (beatmap.combo === 0) {
+                    context.save();
+
+                    context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
+                    context.textAlign = "right";
+                    context.textBaseline = "top";
+                    context.fillStyle = "black";
+                    context.fillText(beatmap.bpm + " BPM", grid - 10, -grid);
+                    context.textAlign = "left";
+                    context.fillText(clears + " CLEARS", -grid + 10, -grid);
+
+                    context.textAlign = "center";
+                    context.textBaseline = "middle";
+                    for (let rhythm of beatmap.rhythms) {
+                        context.fillText(rhythm.subdivisions.length, rhythm.position[0] * grid, grid/1.6);
+                    }
+                    context.fillText(":", 0, grid/1.6)
+
+                    context.restore();
+                }
             }
         } else {
             draw_score(context);
@@ -448,17 +476,17 @@ function draw_beatmap(context) {
 function update_beatmap(delta, now) {
     if (beatmap && 'startTime' in beatmap) {
         if (!beatmap.done) {
-            if (beatmap.roundCombo > 0) {
-                if (beatmap.roundCombo >= 4) {
-                    clear_beatmap();
-                }
-            }
-            
             let latency = (audioContext.baseLatency + audioContext.outputLatency) * 1000;
             beatmap.currentTime = now;
             beatmap.elapsed = now - beatmap.startTime;
             beatmap.localElapsed = beatmap.elapsed - beatmap.spawnTime;
             beatmap.adjustedElapsed = beatmap.localElapsed - latency;
+
+            if ('clearTime' in beatmap) {
+                if (beatmap.adjustedElapsed - beatmap.clearTime >= beatmap.measure / 2)
+                    clear_beatmap();
+                return;
+            }
 
             if (beatmap.localElapsed >= 0) {
                 let quarter = 60 / beatmap.bpm * 1000;
@@ -528,6 +556,17 @@ function update_beatmap(delta, now) {
                     allComboReady = false;
                     continue;
                 }
+
+                if (!('keyCode' in rhythm)) {
+                    allComboReady = false;
+                    rhythm.previousBeat = unadjustedBeat;
+                    
+                    let nextRhythm = beatmap.rhythms[rhythmIndex + 1];
+                    if (nextRhythm && beatmap.adjustedElapsed >= nextRhythm.spawnTime - beatmap.measure - beatmap.measure/2) {
+                        nextRhythm.spawnTime += beatmap.measure / 2;
+                    }
+                    continue;
+                }
                 
                 let distance = Math.abs(beatmap.adjustedElapsed - closestBeatTime);
     
@@ -556,9 +595,12 @@ function update_beatmap(delta, now) {
                         rhythm.previousMiss = rhythm.previousBeat;
                     }
                     rhythm.combo = 0;
+                    if (beatmap.combo > beatmap.maxCombo)
+                        beatmap.maxCombo = beatmap.combo;
                     beatmap.combo = 0;
                     rhythm.roundCombo = 0;
                     beatmap.roundCombo = 0;
+                    beatmap.totalMisses++;
                 }
 
                 if (
@@ -569,6 +611,7 @@ function update_beatmap(delta, now) {
                     rhythm.previousMiss !== closestBeat &&
                     beatmap.adjustedElapsed >= closestBeatTime
                 ) {
+                    beatmap.previousHitTime = beatmap.adjustedElapsed;
                     rhythm.previousHit = closestBeat;
                     rhythm.combo++;
                     beatmap.combo++;
@@ -587,6 +630,7 @@ function update_beatmap(delta, now) {
                         distance <= Math.min(HIT_PERFECT_DISTANCE, beat_length(rhythm) / 2)
                     ) {
                         beatmap.respack.hitSounds[rhythmIndex].play();
+                        beatmap.previousHitTime = beatmap.adjustedElapsed;
                         rhythm.previousHit = closestBeat;
                         rhythm.combo++;
                         beatmap.combo++;
@@ -596,9 +640,12 @@ function update_beatmap(delta, now) {
                         spawn_miss_particle(rhythm, playhead_position(rhythm) / beat_length(rhythm));
                         rhythm.previousMiss = closestBeat;
                         rhythm.combo = 0;
+                        if (beatmap.combo > beatmap.maxCombo)
+                            beatmap.maxCombo = beatmap.combo;
                         beatmap.combo = 0;
                         rhythm.roundCombo = 0;
                         beatmap.roundCombo = 0;
+                        beatmap.totalMisses++;
                     }
                 }
 
@@ -614,6 +661,9 @@ function update_beatmap(delta, now) {
                 beatmap.roundCombo++;
                 for (let rhythm of beatmap.rhythms) {
                     rhythm.roundCombo -= rhythm.subdivisions.length;
+                }
+                if (!beatmap.clearTime && beatmap.roundCombo >= 4) {
+                    beatmap.clearTime = beatmap.localElapsed;
                 }
                 spawn_roundcombo_particle();
             }
@@ -685,13 +735,15 @@ function spawn_roundcombo_particle() {
 
     spawn_particle({
         lifetime: beatmap.measure / 2,
+        a: 1,
         draw: function(context) {
             context.save();
+            context.globalAlpha = this.a;
             context.globalCompositeOperation = "destination-over";
             context.drawImage(image, -window.innerWidth/2, -window.innerHeight/2, window.innerWidth, window.innerHeight);
             context.restore();
         },
-        update: function() { }
+        update: function(delta) { }
     })
 }
 
@@ -736,10 +788,7 @@ function spawn_perfect_particle(rhythm) {
             sprites.hitPerfectImage.draw(context, 0, 0, this.imageSize, this.imageSize);
             context.restore();
         },
-        update: function() {
-            if (beatmap.done)
-                this.lifetime = 0;
-        }
+        update: function() { }
     })
 }
 
@@ -761,7 +810,7 @@ function spawn_hit_perfect_particle(rhythm, subdivision) {
                 }
             },
             update: function(delta) {
-                if (beatmap.done)
+                if ('clearTime' in beatmap)
                     this.lifetime = 0;
             }
         })
@@ -798,7 +847,7 @@ function spawn_hit_perfect_particle(rhythm, subdivision) {
             context.restore();
         },
         update: function() {
-            if (beatmap.done)
+            if ('clearTime' in beatmap)
                 this.lifetime = 0;
         }
     })
