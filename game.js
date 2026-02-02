@@ -36,10 +36,6 @@ function draw(now) {
     context.translate(context.canvas.width/2, context.canvas.height/2);
     context.scale(window.devicePixelRatio, window.devicePixelRatio);
 
-    // context.strokeStyle = "lightgray";
-    // context.lineWidth = 1;
-    // context.strokeRect(-width/2, -height/2, width, height);
-
     draw_beatmap(context, now);
     draw_particles(context);
 }
