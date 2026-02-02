@@ -12,7 +12,7 @@ const KEY_FONT_SCALE = 1 / 10;
 const COMBO_TEXT_COLOR = "lightgray";
 const COMBO_FONT_SCALE = 4;
 const MISS_PARTICLE_SCALE = 0.7;
-const UI_FONT = "'Arial Narrow', 'Barlow Semi Condensed', system-ui, sans-serif";
+const UI_FONT = "'Arial Narrow', 'Babel Sans', sans-serif";
 
 var soundpacks = [
     {
