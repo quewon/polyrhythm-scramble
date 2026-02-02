@@ -593,21 +593,29 @@ function update_beatmap(delta, now) {
                 let unadjustedBeat = Math.round((beatmap.localElapsed - rhythm.spawnTime) / beat_length(rhythm));
                 let unadjustedBeatTime = unadjustedBeat * beat_length(rhythm) + rhythm.spawnTime;
                 
-                // key registration
-                if (!('keyCode' in rhythm)) {
-                    if (beatmap.adjustedElapsed >= rhythm.spawnTime - beatmap.spawnLeadup) {
-                        let freeKey;
-                        search: for (let key in keypressed) {
-                            if (key === "Escape") continue;
-                            for (let r of beatmap.rhythms) {
-                                if (r.keyCode === key)
-                                    continue search;
+                if (beatmap.localElapsed >= rhythm.spawnTime - beatmap.measure) {
+                    // key registration
+                    if (!('keyCode' in rhythm)) {
+                        if (rhythmIndex === 0 && keypressed["LeftTouch"]) {
+                            rhythm.keyCode = "LeftTouch";
+                        } else if (rhythmIndex === 1 && keypressed["RightTouch"]) {
+                            rhythm.keyCode = "RightTouch";
+                        } else {
+                            if (beatmap.adjustedElapsed >= rhythm.spawnTime - beatmap.spawnLeadup) {
+                                let freeKey;
+                                search: for (let key in keypressed) {
+                                    if (["Escape", "LeftTouch", "RightTouch"].includes(key)) continue;
+                                    for (let r of beatmap.rhythms) {
+                                        if (r.keyCode === key)
+                                            continue search;
+                                    }
+                                    freeKey = key;
+                                    break;
+                                }
+                                if (freeKey) {
+                                    rhythm.keyCode = freeKey;
+                                }
                             }
-                            freeKey = key;
-                            break;
-                        }
-                        if (freeKey) {
-                            rhythm.keyCode = freeKey;
                         }
                     }
                 }

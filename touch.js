@@ -1,6 +1,7 @@
 import { keydown, keypressed } from "./keyboard.js";
 
 document.addEventListener("touchstart", e => {
+    if (e.touches) e.preventDefault();
     for (let touch of e.touches) {
         if (touch.pageX < window.innerWidth/2) {
             keydown["LeftTouch"] = true;
@@ -10,6 +11,9 @@ document.addEventListener("touchstart", e => {
             keypressed["RightTouch"] = true;
         }
     }
+})
+document.addEventListener("touchmove", e => {
+    if (e.touches) e.preventDefault();
 })
 document.addEventListener("touchend", e => {
     for (let touch of e.touches) {
