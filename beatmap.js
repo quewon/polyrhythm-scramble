@@ -6,8 +6,7 @@ import ImageSprite from "./ImageSprite.js";
 import { grid, rhythm_radius, beat_radius } from "./game.js";
 import { smoothstep } from "./util.js";
 
-const HIT_OFFSET_CAP = 300;
-const HIT_PERFECT_DISTANCE = 100;
+const HIT_DISTANCE = 100;
 const TITLE_FONT_SCALE = 1 / 8;
 const INFO_FONT_SCALE = 1 / 10;
 const KEY_FONT_SCALE = 1 / 10;
@@ -47,7 +46,7 @@ var soundpacks = [
     }
 ]
 var sprites = {
-    hitPerfectImage: new ImageSprite({ src: "res/images/perfect.png" }),
+    hitImage: new ImageSprite({ src: "res/images/perfect.png" }),
     missImage: new ImageSprite({ src: "res/images/miss.png" })
 }
 var beatmap;
@@ -120,14 +119,12 @@ function generate_beatmap() {
         rhythms: [
             {
                 spawnTime: measure,
-                // measures: 4,
                 subdivisions: random_subdivisions(),
                 position: [-0.5, 0],
                 color: "blue",
             },
             {
                 spawnTime: measure * 3 + (measure / 4) * Math.floor(Math.random() * 4),
-                // measures: 4,
                 subdivisions: random_subdivisions(),
                 position: [0.5, 0],
                 color: "red",
@@ -147,6 +144,7 @@ function start_beatmap(now) {
     beatmap.totalMisses = 0;
     beatmap.combo = 0;
     beatmap.roundCombo = 0;
+    beatmap.spareMeasures = 4;
     for (let rhythm of beatmap.rhythms) {
         rhythm.combo = 0;
         rhythm.roundCombo = 0;
@@ -161,6 +159,8 @@ function clear_beatmap() {
         beatmap.maxCombo = beatmap.combo;
     beatmap.done = true;
     clears++;
+    if (beatmap.spareMeasures <= 0)
+        clears = 0;
 }
 
 function abc_blocks(context, text, size, cx, cy, t, noStroke) {
@@ -219,13 +219,30 @@ function draw_intro(context) {
     context.fillText("[ANY KEY] TO BEGIN", 0, grid/2);
 }
 
-function draw_score(context) {
+function draw_score(context, now) {
+    let time = now - (beatmap.elapsed + beatmap.startTime);
+    time = Math.min(1000, time);
+    let t = time / 1000;
+
+    if (beatmap.spareMeasures <= 0) {
+        sprites.missImage.draw(context, grid / 2 * t, 0, grid, grid);
+    } else {
+        sprites.hitImage.draw(context, grid / 2 * t, 0, grid, grid);
+    }
+
+    context.fillStyle = "black";
+
     context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
     context.textAlign = "center";
     context.textBaseline = "top";
-    context.fillText(clears + " ROUND(S) CLEARED", 0, -grid);
+    if (beatmap.spareMeasures <= 0) {
+        context.fillText("GAME OVER", 0, -grid);
+    } else {
+        context.fillText(clears + " ROUND(S) CLEARED", 0, -grid);
+    }
     
     context.textBaseline = "middle";
+    let x = -grid / 2 * t;
     let lines = [
         beatmap.bpm + " BPM",
         beatmap.rhythms[0].subdivisions.length + ":" + beatmap.rhythms[1].subdivisions.length,
@@ -240,14 +257,24 @@ function draw_score(context) {
         let mm = context.measureText(lines[i]);
         if (mm.width > width) width = mm.width;
     }
+    context.save();
+    context.fillStyle = "white";
     context.strokeStyle = "black";
-    context.strokeRect(-width/2 - padding, -height/2 - padding, width + padding * 2, height + padding * 2);
+    context.beginPath();
+    context.rect(x - width/2 - padding, -height/2 - padding, width + padding * 2, height + padding * 2);
+    context.fill();
+    context.stroke();
+    context.restore();
     for (let i=0; i<lines.length; i++) {
-        context.fillText(lines[i], 0, -height/2 + lineheight * (i + 0.5));
+        context.fillText(lines[i], x, -height/2 + lineheight * (i + 0.5));
     }
 
     context.textBaseline = "bottom";
-    context.fillText("[ANY KEY] TO CONTINUE", 0, grid);
+    if (beatmap.spareMeasures <= 0) {
+        context.fillText("[ANY KEY] TO RESTART", 0, grid);
+    } else {
+        context.fillText("[ANY KEY] TO CONTINUE", 0, grid);
+    }
 }
 
 function draw_rhythm_shape(context, rhythm, rx, ry) {
@@ -410,21 +437,11 @@ function draw_rhythm(context, rhythm) {
 
     // context.save();
     // context.globalAlpha = 0.5;
-    // let cap = Math.min(beat_length(rhythm) / 2, HIT_OFFSET_CAP);
-    // let perfect_cap = Math.min(beat_length(rhythm) / 2, HIT_PERFECT_DISTANCE);
+    // let cap = Math.min(beat_length(rhythm) / 2, HIT_DISTANCE);
     // for (let i=0; i<rhythm.subdivisions.length; i++) {
-    //     context.fillStyle = "yellow";
+    //     context.fillStyle = "greenyellow";
     //     let a = (i * beat_length(rhythm) - cap) / beatmap.measure;
     //     let b = (i * beat_length(rhythm) + cap) / beatmap.measure;
-    //     context.beginPath();
-    //     context.arc(rhythm.position[0] * grid, rhythm.position[1] * grid, rhythm_radius, a * Math.PI*2 - Math.PI/2, b * Math.PI*2 - Math.PI/2);
-    //     context.lineTo(rhythm.position[0] * grid, rhythm.position[1] * grid);
-    //     context.closePath();
-    //     context.fill();
-
-    //     context.fillStyle = "greenyellow";
-    //     a = (i * beat_length(rhythm) - perfect_cap) / beatmap.measure;
-    //     b = (i * beat_length(rhythm) + perfect_cap) / beatmap.measure;
     //     context.beginPath();
     //     context.arc(rhythm.position[0] * grid, rhythm.position[1] * grid, rhythm_radius, a * Math.PI*2 - Math.PI/2, b * Math.PI*2 - Math.PI/2);
     //     context.lineTo(rhythm.position[0] * grid, rhythm.position[1] * grid);
@@ -434,7 +451,7 @@ function draw_rhythm(context, rhythm) {
     // context.restore();
 }
 
-function draw_beatmap(context) {
+function draw_beatmap(context, now) {
     if (beatmap && 'startTime' in beatmap) {
         if (!beatmap.done) {
             if (!('clearTime' in beatmap)) {
@@ -464,13 +481,49 @@ function draw_beatmap(context) {
 
                     context.restore();
                 }
+
+                if (beatmap.combo === 0 || beatmap.adjustedElapsed - beatmap.previousMiss < beatmap.measure) {
+                    context.save();
+                    context.fillStyle = "yellow";
+                    context.strokeStyle = "black";
+                    let fullwidth = grid * 2 - 20;
+                    let gap = grid/40;
+                    let width = fullwidth / 4 - gap;
+                    let height = grid/16;
+                    for (let i=0; i<4; i++) {
+                        context.beginPath();
+                        context.rect((i - 2) * (width + gap) + gap/2, grid - height, width, height);
+                        if (4 - i <= beatmap.spareMeasures) {
+                            context.fill();
+                        }
+                        context.stroke();
+                    }
+                    context.restore();
+                }
             }
         } else {
-            draw_score(context);
+            draw_score(context, now);
         }
     } else {
         draw_intro(context);
     }
+}
+
+function handle_miss(rhythm) {
+    rhythm.combo = 0;
+    if (beatmap.combo > beatmap.maxCombo)
+        beatmap.maxCombo = beatmap.combo;
+    beatmap.combo = 0;
+    rhythm.roundCombo = 0;
+    beatmap.roundCombo = 0;
+    beatmap.totalMisses++;
+}
+
+function handle_hit(rhythm) {
+    beatmap.previousHitTime = beatmap.adjustedElapsed;
+    rhythm.combo++;
+    beatmap.combo++;
+    rhythm.roundCombo++;
 }
 
 function update_beatmap(delta, now) {
@@ -569,39 +622,6 @@ function update_beatmap(delta, now) {
                 }
                 
                 let distance = Math.abs(beatmap.adjustedElapsed - closestBeatTime);
-    
-                if (
-                    (
-                        closestBeat > 0 &&
-                        closestBeat === rhythm.previousBeat + 1 &&
-                        rhythm.subdivisions[rhythm.previousBeat % rhythm.subdivisions.length] &&
-                        rhythm.previousHit !== rhythm.previousBeat &&
-                        rhythm.previousMiss !== rhythm.previousBeat
-                    ) ||
-                    (
-                        closestBeat >= 0 &&
-                        closestBeat === rhythm.previousBeat &&
-                        rhythm.subdivisions[closestSubdivision] &&
-                        rhythm.previousHit !== closestBeat &&
-                        beatmap.adjustedElapsed > closestBeatTime &&
-                        distance > HIT_OFFSET_CAP &&
-                        rhythm.previousMiss !== closestBeat
-                    )
-                ) {
-                    spawn_miss_particle(rhythm, rhythm.previousBeat % rhythm.subdivisions.length);
-                    if (closestBeat === rhythm.previousBeat + 1) {
-                        rhythm.previousMiss = closestBeat;
-                    } else {
-                        rhythm.previousMiss = rhythm.previousBeat;
-                    }
-                    rhythm.combo = 0;
-                    if (beatmap.combo > beatmap.maxCombo)
-                        beatmap.maxCombo = beatmap.combo;
-                    beatmap.combo = 0;
-                    rhythm.roundCombo = 0;
-                    beatmap.roundCombo = 0;
-                    beatmap.totalMisses++;
-                }
 
                 if (
                     closestBeat >= 0 &&
@@ -611,12 +631,31 @@ function update_beatmap(delta, now) {
                     rhythm.previousMiss !== closestBeat &&
                     beatmap.adjustedElapsed >= closestBeatTime
                 ) {
-                    beatmap.previousHitTime = beatmap.adjustedElapsed;
+                    handle_hit(rhythm);
                     rhythm.previousHit = closestBeat;
-                    rhythm.combo++;
-                    beatmap.combo++;
-                    rhythm.roundCombo++;
                     spawn_perfect_particle(rhythm, closestSubdivision);
+                }
+
+                if (
+                    closestBeat >= 0 &&
+                    closestBeat === rhythm.previousBeat &&
+                    rhythm.subdivisions[closestSubdivision] &&
+                    rhythm.previousHit !== closestBeat &&
+                    beatmap.adjustedElapsed > closestBeatTime &&
+                    distance > Math.min(HIT_DISTANCE, beat_length(rhythm) / 2) &&
+                    rhythm.previousMiss !== closestBeat
+                ) {
+                    handle_miss(rhythm);
+                    rhythm.previousMiss = rhythm.previousBeat;
+                    let previousBeatTime = rhythm.previousBeat * beat_length(rhythm) + rhythm.spawnTime;
+                    if (!('previousMiss' in beatmap) || beatmap.adjustedElapsed - beatmap.previousMiss >= beatmap.measure) {
+                        beatmap.spareMeasures--;
+                        beatmap.previousMiss = previousBeatTime;
+                        if (beatmap.spareMeasures <= 0) {
+                            beatmap.clearTime = beatmap.adjustedElapsed;
+                        }
+                    }
+                    spawn_miss_particle(rhythm, rhythm.previousBeat % rhythm.subdivisions.length);
                 }
 
                 if (rhythm.previousHit !== closestBeat) {
@@ -627,25 +666,23 @@ function update_beatmap(delta, now) {
                     if (
                         rhythm.subdivisions[closestSubdivision] && 
                         rhythm.previousHit !== closestBeat && 
-                        distance <= Math.min(HIT_PERFECT_DISTANCE, beat_length(rhythm) / 2)
+                        distance <= Math.min(HIT_DISTANCE, beat_length(rhythm) / 2)
                     ) {
                         beatmap.respack.hitSounds[rhythmIndex].play();
-                        beatmap.previousHitTime = beatmap.adjustedElapsed;
+                        handle_hit(rhythm);
                         rhythm.previousHit = closestBeat;
-                        rhythm.combo++;
-                        beatmap.combo++;
-                        rhythm.roundCombo++;
-                        spawn_hit_perfect_particle(rhythm, closestSubdivision);
+                        spawn_hit_particle(rhythm, closestSubdivision);
                     } else {
-                        spawn_miss_particle(rhythm, playhead_position(rhythm) / beat_length(rhythm));
+                        handle_miss(rhythm);
                         rhythm.previousMiss = closestBeat;
-                        rhythm.combo = 0;
-                        if (beatmap.combo > beatmap.maxCombo)
-                            beatmap.maxCombo = beatmap.combo;
-                        beatmap.combo = 0;
-                        rhythm.roundCombo = 0;
-                        beatmap.roundCombo = 0;
-                        beatmap.totalMisses++;
+                        if (!('previousMiss' in beatmap) || beatmap.adjustedElapsed - beatmap.previousMiss >= beatmap.measure - 10) {
+                            beatmap.spareMeasures--;
+                            beatmap.previousMiss = beatmap.adjustedElapsed;
+                            if (beatmap.spareMeasures <= 0) {
+                                beatmap.clearTime = beatmap.adjustedElapsed;
+                            }
+                        }
+                        spawn_miss_particle(rhythm, playhead_position(rhythm) / beat_length(rhythm));
                     }
                 }
 
@@ -785,14 +822,14 @@ function spawn_perfect_particle(rhythm) {
             context.globalAlpha = this.lifetime / lifetime * 2;
             context.translate(this.x, this.y);
             context.rotate(this.rotation);
-            sprites.hitPerfectImage.draw(context, 0, 0, this.imageSize, this.imageSize);
+            sprites.hitImage.draw(context, 0, 0, this.imageSize, this.imageSize);
             context.restore();
         },
         update: function() { }
     })
 }
 
-function spawn_hit_perfect_particle(rhythm, subdivision) {
+function spawn_hit_particle(rhythm, subdivision) {
     if (rhythm.subdivisions.length > 1 && rhythm.combo >= rhythm.subdivisions.length) {
         spawn_particle({
             lifetime: beat_length(rhythm),

@@ -30,7 +30,7 @@ function resize() {
     beat_radius = Math.max(window.devicePixelRatio * 3, grid / 30);
 }
 
-function draw() {
+function draw(now) {
     context.resetTransform();
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     context.translate(context.canvas.width/2, context.canvas.height/2);
@@ -40,14 +40,14 @@ function draw() {
     // context.lineWidth = 1;
     // context.strokeRect(-width/2, -height/2, width, height);
 
-    draw_beatmap(context);
+    draw_beatmap(context, now);
     draw_particles(context);
 }
 function update(delta, now) {
     update_beatmap(delta, now);
     update_particles(delta);
     update_keyboard();
-    draw();
+    draw(now);
 }
 
 resize();
