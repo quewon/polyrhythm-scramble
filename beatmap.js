@@ -16,6 +16,7 @@ const UI_FONT = "'Arial Narrow', 'Babel Sans', sans-serif";
 const UI_LINEHEIGHT = 1.5;
 const TOP_LEVEL = 10;
 const SPARE_MEASURES = 8;
+const PADDING = 5;
 
 var clears = 0;
 var hiscore = 0;
@@ -245,10 +246,23 @@ function abc_blocks(context, text, size, cx, cy, t, noStroke) {
 
 function draw_intro(context) {
     context.fillStyle = "black";
+
     abc_blocks(context, "polyrhythm", grid * TITLE_FONT_SCALE, 0, -grid/2);
     abc_blocks(context, "scramble", grid * TITLE_FONT_SCALE, 0, -grid/3, 3);
 
+    context.fillStyle = "gray";
     context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
+
+    context.textBaseline = "top";
+    context.textAlign = "right";
+    let lineheight = grid * INFO_FONT_SCALE * UI_LINEHEIGHT;
+    let x = window.innerWidth / 2 - PADDING;
+    let y = -window.innerHeight/2 + PADDING;
+    context.fillText("Various clip art: clipart-library.com", x, y);
+    context.fillText("Countdown sfx: FreqMan @ freesound.org", x, y + lineheight);
+
+    context.fillStyle = "black";
+
     context.textAlign = "center";
     context.textBaseline = "middle";
 
@@ -259,8 +273,8 @@ function draw_intro(context) {
     }
 
     context.textBaseline = "bottom";
-    context.fillText("HISCORE : " + localStorage.getItem("hiscore"), 0, grid - grid * INFO_FONT_SCALE * UI_LINEHEIGHT);
-    context.fillText("HIGHEST CLEAR : " + localStorage.getItem("top-clears"), 0, grid);
+    context.fillText("HISCORE: " + localStorage.getItem("hiscore"), 0, grid - PADDING - grid * INFO_FONT_SCALE * UI_LINEHEIGHT);
+    context.fillText("HIGHEST CLEAR: " + localStorage.getItem("top-clears"), 0, grid - PADDING);
 }
 
 function draw_score(context, now) {
@@ -287,10 +301,10 @@ function draw_score(context, now) {
     } else if (clears === 10) {
         context.fillText("YOU WIN", 0, -grid);
     } else {
-        context.fillText(clears + " ROUND(S) CLEARED", 0, -grid);
+        context.fillText(clears + " ROUND(S) CLEARED", 0, -grid + PADDING);
     }
 
-    context.fillText("TOTAL SCORE : " + hiscore, 0, -grid + lineheight);
+    context.fillText("TOTAL SCORE : " + hiscore, 0, -grid + PADDING + lineheight);
     
     if (beatmap.spareMeasures > 0) {
         context.textBaseline = "middle";
@@ -326,11 +340,11 @@ function draw_score(context, now) {
 
     context.textBaseline = "bottom";
     if (beatmap.spareMeasures <= 0) {
-        context.fillText("[ANY KEY] TO RESTART", 0, grid);
+        context.fillText("[ANY KEY] TO RESTART", 0, grid - PADDING);
     } else if (clears === 10) {
-        context.fillText("[ANY KEY] TO KEEP GOING", 0, grid);
+        context.fillText("[ANY KEY] TO KEEP GOING", 0, grid - PADDING);
     } else {
-        context.fillText("[ANY KEY] TO CONTINUE", 0, grid);
+        context.fillText("[ANY KEY] TO CONTINUE", 0, grid - PADDING);
     }
 }
 
@@ -525,9 +539,9 @@ function draw_beatmap(context, now) {
                     context.textAlign = "right";
                     context.textBaseline = "top";
                     context.fillStyle = "black";
-                    context.fillText(beatmap.bpm + " BPM", grid - 10, -grid);
+                    context.fillText(beatmap.bpm + " BPM", grid - PADDING, -grid);
                     context.textAlign = "left";
-                    context.fillText("LEVEL " + Math.min(clears, TOP_LEVEL), -grid + 10, -grid);
+                    context.fillText("LEVEL " + Math.min(clears, TOP_LEVEL), -grid + PADDING, -grid + PADDING);
 
                     context.textAlign = "center";
                     context.textBaseline = "middle";
@@ -543,13 +557,13 @@ function draw_beatmap(context, now) {
                     context.save();
                     context.fillStyle = "yellow";
                     context.strokeStyle = "black";
-                    let fullwidth = grid * 2 - 20;
+                    let fullwidth = (grid - PADDING) * 2;
                     let gap = grid/60;
                     let width = fullwidth / SPARE_MEASURES - gap;
                     let height = grid/16;
                     for (let i=0; i<SPARE_MEASURES; i++) {
                         context.beginPath();
-                        context.rect((i - SPARE_MEASURES/2) * (width + gap) + gap/2, grid - height, width, height);
+                        context.rect((i - SPARE_MEASURES/2) * (width + gap) + gap/2, grid - height - PADDING, width, height);
                         if (SPARE_MEASURES - i <= beatmap.spareMeasures) {
                             context.fill();
                         }
