@@ -303,13 +303,23 @@ function abc_blocks(context, text, size, cx, cy, t, noStroke) {
     }
 }
 
+const TITLE_BG = new ImageSprite({ src: "res/images/bikes.jpg" });
+
 function draw_intro(context) {
     context.fillStyle = "black";
-
-    abc_blocks(context, "polyrhythm", grid * TITLE_FONT_SCALE, 0, -grid/2);
-    abc_blocks(context, "scramble", grid * TITLE_FONT_SCALE, 0, -grid/3, 3);
-
     context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
+
+    if (!TITLE_BG.loaded && !resources_loaded) {
+        context.textAlign = "center";
+        context.textBaseline = "bottom";
+        context.fillText("LOADING...", 0, 0);
+        return;
+    }
+
+    let imagewidth = grid * 2 - PADDING * 2;
+    let imageheight = imagewidth * (TITLE_BG.height / TITLE_BG.width);
+    TITLE_BG.draw(context, 0, 0, imagewidth, imageheight);
+
     // context.fillStyle = "gray";
     // context.textBaseline = "top";
     // context.textAlign = "left";
@@ -319,20 +329,64 @@ function draw_intro(context) {
     // context.fillText("Various clip art: clipart-library.com", x, y);
     // context.fillText("Countdown sfx: FreqMan @ freesound.org", x, y + lineheight);
 
-    context.fillStyle = "black";
-
     context.textAlign = "center";
-    context.textBaseline = "middle";
+    context.textBaseline = "bottom";
+    context.fillText("[ANY KEY] TO BEGIN", 0, grid);
 
-    if (resources_loaded) {
-        context.fillText("[ANY KEY] TO BEGIN", 0, 0);
-    } else {
-        context.fillText("LOADING...", 0, 0);
+    const lineheight = grid * INFO_FONT_SCALE * 1.2;
+    context.textBaseline = "middle";
+    context.textAlign = "center";
+    
+    let hiscore = localStorage.getItem("hiscore");
+    if (hiscore) {
+        context.save();
+        context.translate(
+            -grid + rhythm_radius/3 + PADDING * 2,
+            -imageheight/2 + rhythm_radius/6 + PADDING
+        );
+        context.strokeStyle = "black";
+        context.fillStyle = "white";
+        context.beginPath();
+        context.arc(0, 0, rhythm_radius/1.5, 0, Math.PI*2);
+        context.fill();
+        context.stroke();
+    
+        context.fillStyle = "black";
+        context.fillText("hiscore", 0, -lineheight/2);
+        context.fillText(hiscore, 0, lineheight/2);
+        context.restore();
     }
 
-    context.textBaseline = "bottom";
-    context.fillText("HISCORE: " + localStorage.getItem("hiscore"), 0, grid - PADDING - grid * INFO_FONT_SCALE * UI_LINEHEIGHT);
-    context.fillText("HIGHEST CLEAR: " + localStorage.getItem("top-clears"), 0, grid - PADDING);
+    let topclears = localStorage.getItem("top-clears");
+    if (topclears) {
+        context.save();
+        context.translate(
+            grid - rhythm_radius/2 - PADDING * 2, 
+            imageheight/2 - rhythm_radius/4 - PADDING
+        );
+
+        context.strokeStyle = "black";
+        context.fillStyle = "white";
+        context.beginPath();
+        context.moveTo(-rhythm_radius, 0);
+        context.lineTo(0, -rhythm_radius);
+        context.lineTo(rhythm_radius, 0);
+        context.lineTo(0, rhythm_radius);
+        context.closePath();
+        context.fill();
+        context.stroke();
+    
+        context.fillStyle = "black";
+        context.fillText("highest clear", 0, -lineheight/2);
+        context.fillText(topclears, 0, lineheight/2);
+        context.restore();
+    }
+
+    // context.textAlign = "right";
+    // context.fillText("HIGHEST CLEAR: " + localStorage.getItem("top-clears"), imagewidth/2 - PADDING, imageheight/2 + PADDING);
+
+    abc_blocks(context, "polyrhythm", grid * TITLE_FONT_SCALE, 0, -grid - 13, null);
+    abc_blocks(context, "scramble", grid * TITLE_FONT_SCALE, 0, -grid + 13, 3);
 }
 
 function draw_score(context, now) {
@@ -362,7 +416,7 @@ function draw_score(context, now) {
         context.fillText(clears + " ROUND(S) CLEARED", 0, -grid + PADDING);
     }
 
-    context.fillText("TOTAL SCORE : " + hiscore, 0, -grid + PADDING + lineheight);
+    context.fillText("SUM SCORE : " + hiscore, 0, -grid + PADDING + lineheight);
     
     if (beatmap.spareMeasures > 0) {
         context.textBaseline = "middle";
@@ -372,7 +426,7 @@ function draw_score(context, now) {
             beatmap.rhythms[0].subdivisions.length + ":" + beatmap.rhythms[1].subdivisions.length,
             beatmap.spareMeasures + " SPARE MEASURES",
             beatmap.totalMisses + " MISS(ES)",
-            "= " + beatmap.score + " POINTS"
+            beatmap.score + " POINTS"
         ]
 
         let width = 0;
