@@ -199,13 +199,25 @@ export default class AudioSprite {
         this.playing = true;
     }
 
-    stop() {
+    stop(fadeinterval) {
         if (this.source) {
-            this.source.stop();
-            this.source = null;
-            if (this.onended) this.onended();
-            this.gain.disconnect();
             this.playing = false;
+            if (fadeinterval) {
+                this.gain.gain.setTargetAtTime(0, audioContext.currentTime, fadeinterval);
+                setTimeout(() => {
+                    if (!this.playing) {
+                        this.source.stop();
+                        this.source = null;
+                        if (this.onended) this.onended();
+                        this.gain.disconnect();
+                    }
+                }, 5000 * fadeinterval);
+            } else {
+                this.source.stop();
+                this.source = null;
+                if (this.onended) this.onended();
+                this.gain.disconnect();
+            }
         }
     }
 }
