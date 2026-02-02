@@ -10,7 +10,7 @@ const TITLE_FONT_SCALE = 1 / 8;
 const INFO_FONT_SCALE = 1 / 12;
 const KEY_FONT_SCALE = 1 / 10;
 const COMBO_TEXT_COLOR = "lightgray";
-const COMBO_FONT_SCALE = 4;
+const COMBO_FONT_SCALE = 1;
 const MISS_PARTICLE_SCALE = 0.7;
 const UI_FONT = "'Arial Narrow', 'Babel Sans', sans-serif";
 const UI_LINEHEIGHT = 1.5;
@@ -303,35 +303,18 @@ function abc_blocks(context, text, size, cx, cy, t, noStroke) {
     }
 }
 
-const TITLE_BG = new ImageSprite({ src: "res/images/bikes.jpg" });
+let startTime = new Date().getTime();
 
 function draw_intro(context) {
     context.fillStyle = "black";
     context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
 
-    if (!TITLE_BG.loaded && !resources_loaded) {
+    if (!resources_loaded) {
         context.textAlign = "center";
         context.textBaseline = "bottom";
         context.fillText("LOADING...", 0, 0);
         return;
     }
-
-    let imagewidth = grid * 2 - PADDING * 2;
-    let imageheight = imagewidth * (TITLE_BG.height / TITLE_BG.width);
-    TITLE_BG.draw(context, 0, 0, imagewidth, imageheight);
-
-    // context.fillStyle = "gray";
-    // context.textBaseline = "top";
-    // context.textAlign = "left";
-    // let lineheight = grid * INFO_FONT_SCALE * UI_LINEHEIGHT;
-    // let x = -window.innerWidth / 2 + PADDING;
-    // let y = -window.innerHeight / 2 + PADDING;
-    // context.fillText("Various clip art: clipart-library.com", x, y);
-    // context.fillText("Countdown sfx: FreqMan @ freesound.org", x, y + lineheight);
-
-    context.textAlign = "center";
-    context.textBaseline = "bottom";
-    context.fillText("[ANY KEY] TO BEGIN", 0, grid);
 
     const lineheight = grid * INFO_FONT_SCALE * 1.2;
     context.textBaseline = "middle";
@@ -341,8 +324,8 @@ function draw_intro(context) {
     if (hiscore) {
         context.save();
         context.translate(
-            -grid + rhythm_radius/3 + PADDING * 2,
-            -imageheight/2 + rhythm_radius/6 + PADDING
+            -grid/2 + rhythm_radius/3,
+            -grid/4 + rhythm_radius/6
         );
         context.strokeStyle = "black";
         context.fillStyle = "white";
@@ -350,7 +333,6 @@ function draw_intro(context) {
         context.arc(0, 0, rhythm_radius/1.5, 0, Math.PI*2);
         context.fill();
         context.stroke();
-    
         context.fillStyle = "black";
         context.fillText("hiscore", 0, -lineheight/2);
         context.fillText(hiscore, 0, lineheight/2);
@@ -361,10 +343,9 @@ function draw_intro(context) {
     if (topclears) {
         context.save();
         context.translate(
-            grid - rhythm_radius/2 - PADDING * 2, 
-            imageheight/2 - rhythm_radius/4 - PADDING
+            grid/2 - rhythm_radius/2,
+            grid/4 - rhythm_radius/4
         );
-
         context.strokeStyle = "black";
         context.fillStyle = "white";
         context.beginPath();
@@ -375,18 +356,52 @@ function draw_intro(context) {
         context.closePath();
         context.fill();
         context.stroke();
-    
         context.fillStyle = "black";
         context.fillText("highest clear", 0, -lineheight/2);
         context.fillText(topclears, 0, lineheight/2);
         context.restore();
     }
 
-    // context.textAlign = "right";
-    // context.fillText("HIGHEST CLEAR: " + localStorage.getItem("top-clears"), imagewidth/2 - PADDING, imageheight/2 + PADDING);
+    abc_blocks(context, "polyrhythm", grid * TITLE_FONT_SCALE, 0, -grid/1.2, null, true);
+    abc_blocks(context, "scramble", grid * TITLE_FONT_SCALE, 0, -grid/1.2 + grid * TITLE_FONT_SCALE + PADDING, 3, true);
 
-    abc_blocks(context, "polyrhythm", grid * TITLE_FONT_SCALE, 0, -grid - 13, null);
-    abc_blocks(context, "scramble", grid * TITLE_FONT_SCALE, 0, -grid + 13, 3);
+    context.textAlign = "center";
+    context.textBaseline = "bottom";
+    context.fillText("[ANY KEY] TO BEGIN", 0, grid/1.2);
+
+    if (!hiscore || !topclears) {
+        let t = Math.floor((new Date().getTime() - startTime) / 500);
+        
+        context.beginPath();
+        context.strokeStyle = "black";
+        context.fillStyle = "white";
+        let r = grid/3;
+        if (t % 4 === 3) {
+            context.moveTo(-r, 0);
+            context.lineTo(0, -r);
+            context.lineTo(r, 0);
+            context.lineTo(0, r);
+            context.closePath();
+        } else if (t % 4 === 2) {
+            context.moveTo(0, -r + grid/10);
+            context.lineTo(
+                Math.cos(Math.PI/2 - Math.PI/3) * r,
+                Math.sin(Math.PI/2 - Math.PI/3) * r + grid/15
+            );
+            context.lineTo(
+                Math.cos(Math.PI/2 + Math.PI/3) * r,
+                Math.sin(Math.PI/2 + Math.PI/3) * r + grid/15
+            );
+            context.closePath();
+        } else if (t % 4 === 1) {
+            let length = Math.sqrt(r * r + r * r);
+            context.rect(-length/2, -length/2, length, length);
+        } else {
+            context.arc(0, 0, r, 0, Math.PI*2);
+        }
+        context.fill();
+        context.stroke();
+    }
 }
 
 function draw_score(context, now) {
@@ -1088,7 +1103,7 @@ function spawn_roundcombo_particle() {
     for (let rhythm of beatmap.rhythms) {
         subdivisionsSum += rhythm.subdivisions.length;
     }
-    abc_blocks(offscreenContext, 5 - beatmap.roundCombo + "", grid * COMBO_FONT_SCALE, 0, 0, beatmap.roundCombo + subdivisionsSum, true);
+    abc_blocks(offscreenContext, 5 - beatmap.roundCombo + "", grid * COMBO_FONT_SCALE, 0, -grid, beatmap.roundCombo + subdivisionsSum, true);
     offscreenContext.restore();
 
     spawn_particle({
