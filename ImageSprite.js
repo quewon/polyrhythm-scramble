@@ -2,6 +2,7 @@ export default class ImageSprite {
     element;
     width = 0;
     height = 0;
+    loaded = false;
 
     constructor(options) {
         this.element = new Image();
@@ -9,6 +10,7 @@ export default class ImageSprite {
         this.element.onload = () => {
             this.width = options.width || this.element.naturalWidth;
             this.height = options.height || this.element.naturalHeight;
+            this.loaded = true;
         }
     }
 

@@ -48,8 +48,26 @@ var sprites = {
     hitImage: new ImageSprite({ src: "res/images/perfect.png" }),
     missImage: new ImageSprite({ src: "res/images/miss.png" })
 }
+var resources_loaded = false;
 var beatmap;
 var clears = 0;
+
+function get_resources_loaded() {
+    for (let sprite in sprites) {
+        if (!sprites[sprite].loaded) return false;
+    }
+    for (let soundpack of soundpacks) {
+        for (let hitSound of soundpack.hitSounds) {
+            if (!hitSound.loaded) return false;
+        }
+        for (let countdownSound of soundpack.countdownSounds) {
+            if (!countdownSound.loaded) return false;
+        }
+        if (!soundpack.metronomeSound.loaded) return false;
+        if (!soundpack.countinSound.loaded) return false;
+    }
+    return true;
+}
 
 function generate_beatmap() {
     let respack = soundpacks[soundpacks.length * Math.random() | 0];
@@ -224,7 +242,12 @@ function draw_intro(context) {
     context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillText("[ANY KEY] TO BEGIN", 0, 0);
+
+    if (resources_loaded) {
+        context.fillText("[ANY KEY] TO BEGIN", 0, 0);
+    } else {
+        context.fillText("LOADING...", 0, 0);
+    }
 
     context.textBaseline = "bottom";
     context.fillText("HIGHEST CLEARED : " + localStorage.getItem("top-clears"), 0, grid);
@@ -738,8 +761,9 @@ function update_beatmap(delta, now) {
             }
         }
     } else {
+        resources_loaded = get_resources_loaded();
         // press any key to begin
-        if (Object.keys(keypressed).length > 0) {
+        if (resources_loaded && Object.keys(keypressed).length > 0) {
             generate_beatmap();
             start_beatmap(now);
         }
