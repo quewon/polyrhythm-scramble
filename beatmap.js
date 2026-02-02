@@ -58,33 +58,28 @@ function generate_beatmap() {
     let pick;
     let keys;
 
-    // if (clears < 2) {
-    //     bpm = 60 + Math.round(Math.random() * 20);
-    // } else if (clears < 4) {
-    //     bpm = 80 + Math.round(Math.random() * 20);
-    // } else if (clears < 6) {
-    //     bpm = 80 + Math.round(Math.random() * 40);
-    // } else if (clears < 8) {
-    //     bpm = 100 + Math.round(Math.random() * 40);
-    // } else if (clears < 10) {
-    //     bpm = 100 + Math.round(Math.random() * 75);
-    // } else {
-    //     bpm = 100 + Math.round(Math.random() * 100);
-    // }
-    bpm = 120;
+    if (clears < 1) {
+        bpm = 60 + Math.round(Math.random() * 20);
+    } else if (clears < 4) {
+        bpm = 80 + Math.round(Math.random() * 20);
+    } else if (clears < 6) {
+        bpm = 80 + Math.round(Math.random() * 40);
+    } else if (clears < 8) {
+        bpm = 100 + Math.round(Math.random() * 40);
+    } else if (clears < 10) {
+        bpm = 100 + Math.round(Math.random() * 75);
+    } else {
+        bpm = 100 + Math.round(Math.random() * 100);
+    }
 
     if (clears < 1) {
         pick = [1, 2];
     } else if (clears < 3) {
-        pick = [1, 2, 4];
-    } else if (clears < 5) {
         pick = [1, 2, 3, 4];
-    } else if (clears < 7) {
-        pick = [2, 3, 4, 5, 6];
-    } else if (clears < 13) {
-        pick = [2, 3, 4, 5, 6, 7];
+    } else if (clears < 5) {
+        pick = [1, 2, 3, 4, 5, 6, 8];
     } else {
-        pick = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+        pick = [2, 3, 4, 5, 6, 7, 8];
     }
     
     if (clears < 4) {
