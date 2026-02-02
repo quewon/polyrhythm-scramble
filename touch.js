@@ -1,4 +1,4 @@
-import { keydown, keypressed } from "./keyboard.js";
+import { keydown, keypressed, keyreleased } from "./keyboard.js";
 
 const TOUCH_IGNORE_TIME = 70;
 
@@ -31,8 +31,10 @@ document.addEventListener("touchend", e => {
     e.preventDefault();
     for (let touch of e.touches) {
         if (touch.pageX < window.innerWidth/2) {
+            keyreleased["LeftTouch"] = true;
             delete keydown["LeftTouch"];
         } else if (touch.pageX > window.innerWidth/2) {
+            keyreleased["RightTouch"] = true;
             delete keydown["RightTouch"];
         }
     }

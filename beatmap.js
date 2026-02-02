@@ -1082,10 +1082,10 @@ function spawn_roundcombo_particle() {
     }
 
     offscreenContext.save();
-    for (let x=-window.innerWidth/2; x<=window.innerWidth/2; x+=10 + window.devicePixelRatio) {
+    for (let x=-window.innerWidth/2; x<=window.innerWidth/2; x+=12) {
         offscreenContext.clearRect(x, -window.innerHeight/2, 10, window.innerHeight);
     }
-    for (let y=-window.innerHeight/2; y<=window.innerHeight/2; y+=10 + window.devicePixelRatio) {
+    for (let y=-window.innerHeight/2; y<=window.innerHeight/2; y+=12) {
         offscreenContext.clearRect(-window.innerWidth/2, y, window.innerWidth, 10);
     }
     offscreenContext.restore();

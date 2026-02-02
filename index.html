@@ -10,6 +10,10 @@
             src: url(res/BabelSans.ttf) format("truetype");
         }
 
+        body {
+            overscroll-behavior: none;
+        }
+
         canvas {
             width: 100vw;
             height: 100vh;
@@ -17,6 +21,13 @@
             position: absolute;
             top: 0;
             left: 0;
+
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
     </style>
 </head>
