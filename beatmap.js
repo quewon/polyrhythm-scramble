@@ -328,10 +328,8 @@ function draw_intro(context) {
             -grid/4 + rhythm_radius/6
         );
         context.strokeStyle = "black";
-        context.fillStyle = "white";
         context.beginPath();
         context.arc(0, 0, rhythm_radius/1.5, 0, Math.PI*2);
-        context.fill();
         context.stroke();
         context.fillStyle = "black";
         context.fillText("hiscore", 0, -lineheight/2);
@@ -347,14 +345,12 @@ function draw_intro(context) {
             grid/4 - rhythm_radius/4
         );
         context.strokeStyle = "black";
-        context.fillStyle = "white";
         context.beginPath();
         context.moveTo(-rhythm_radius, 0);
         context.lineTo(0, -rhythm_radius);
         context.lineTo(rhythm_radius, 0);
         context.lineTo(0, rhythm_radius);
         context.closePath();
-        context.fill();
         context.stroke();
         context.fillStyle = "black";
         context.fillText("highest clear", 0, -lineheight/2);
@@ -374,7 +370,6 @@ function draw_intro(context) {
         
         context.beginPath();
         context.strokeStyle = "black";
-        context.fillStyle = "white";
         let r = grid/3;
         if (t % 4 === 3) {
             context.moveTo(-r, 0);
@@ -399,7 +394,6 @@ function draw_intro(context) {
         } else {
             context.arc(0, 0, r, 0, Math.PI*2);
         }
-        context.fill();
         context.stroke();
     }
 }
@@ -1196,7 +1190,6 @@ function spawn_hit_particle(rhythm, subdivision) {
             context.translate(this.x, this.y);
             context.beginPath();
             context.arc(0, 0, rhythm_radius, 0, Math.PI * 2);
-            context.fill();
             context.fill();
             context.restore();
         },
