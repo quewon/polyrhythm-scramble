@@ -18,7 +18,7 @@ const TOP_LEVEL = 10;
 const SPARE_MEASURES = 8;
 const PADDING = 5;
 
-var clears = 10;
+var clears = 0;
 var hiscore = 0;
 
 var soundpacks = [
@@ -309,16 +309,15 @@ function draw_intro(context) {
     abc_blocks(context, "polyrhythm", grid * TITLE_FONT_SCALE, 0, -grid/2);
     abc_blocks(context, "scramble", grid * TITLE_FONT_SCALE, 0, -grid/3, 3);
 
-    context.fillStyle = "gray";
     context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
-
-    context.textBaseline = "top";
-    context.textAlign = "right";
-    let lineheight = grid * INFO_FONT_SCALE * UI_LINEHEIGHT;
-    let x = window.innerWidth / 2 - PADDING;
-    let y = -window.innerHeight/2 + PADDING;
-    context.fillText("Various clip art: clipart-library.com", x, y);
-    context.fillText("Countdown sfx: FreqMan @ freesound.org", x, y + lineheight);
+    // context.fillStyle = "gray";
+    // context.textBaseline = "top";
+    // context.textAlign = "left";
+    // let lineheight = grid * INFO_FONT_SCALE * UI_LINEHEIGHT;
+    // let x = -window.innerWidth / 2 + PADDING;
+    // let y = -window.innerHeight / 2 + PADDING;
+    // context.fillText("Various clip art: clipart-library.com", x, y);
+    // context.fillText("Countdown sfx: FreqMan @ freesound.org", x, y + lineheight);
 
     context.fillStyle = "black";
 
