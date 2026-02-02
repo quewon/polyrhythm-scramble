@@ -205,7 +205,7 @@ export default class AudioSprite {
             if (fadeinterval) {
                 this.gain.gain.setTargetAtTime(0, audioContext.currentTime, fadeinterval);
                 setTimeout(() => {
-                    if (!this.playing) {
+                    if (!this.playing && this.source) {
                         this.source.stop();
                         this.source = null;
                         if (this.onended) this.onended();

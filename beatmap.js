@@ -18,7 +18,7 @@ const TOP_LEVEL = 10;
 const SPARE_MEASURES = 8;
 const PADDING = 5;
 
-var clears = 0;
+var clears = 10;
 var hiscore = 0;
 
 var soundpacks = [
@@ -171,7 +171,8 @@ function generate_beatmap() {
                         if (length > 2) {
                             length -= Math.round(Math.random() * (length - 2));
                         }
-                        a[i - length + 1] = 1;
+                        if (a[i - length + 1] !== 2)
+                            a[i - length + 1] = 1;
                         for (let j=i-length+2; j<i; j++) {
                             a[j] = 2;
                         }
