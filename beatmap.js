@@ -701,9 +701,8 @@ function draw_beatmap(context, now) {
                     context.restore();
                 }
 
-                if (beatmap.roundCombo === 0 || beatmap.adjustedElapsed - beatmap.previousMissTime < beatmap.measure) {
+                if (beatmap.roundCombo === 0 || beatmap.spareMeasures < SPARE_MEASURES) {
                     context.save();
-                    context.fillStyle = "yellow";
                     context.strokeStyle = "black";
                     let fullwidth = (grid - PADDING) * 2;
                     let gap = grid/60;
@@ -712,7 +711,11 @@ function draw_beatmap(context, now) {
                     for (let i=0; i<SPARE_MEASURES; i++) {
                         context.beginPath();
                         context.rect((i - SPARE_MEASURES/2) * (width + gap) + gap/2, grid - height - PADDING, width, height);
-                        if (SPARE_MEASURES - i <= beatmap.spareMeasures) {
+                        if (i < beatmap.spareMeasures - 1) {
+                            context.fillStyle = "yellow";
+                            context.fill();
+                        } else if (i === beatmap.spareMeasures - 1) {
+                            context.fillStyle = "orange";
                             context.fill();
                         }
                         context.stroke();
@@ -736,8 +739,8 @@ function handle_miss(rhythm, beat) {
     beatmap.combo = 0;
     beatmap.roundCombo = 0;
     beatmap.totalMisses++;
-    if (!beatmap.previousMissTime || beatmap.adjustedElapsed - beatmap.previousMissTime >= beatmap.measure) {
-        beatmap.previousMissTime = beatmap.adjustedElapsed;
+    if (!beatmap.spareUsedTime || beatmap.adjustedElapsed - beatmap.spareUsedTime >= beatmap.measure) {
+        beatmap.spareUsedTime = beatmap.adjustedElapsed;
         beatmap.spareMeasures--;
         if (beatmap.spareMeasures <= 0) {
             beatmap.clearTime = beatmap.adjustedElapsed;
