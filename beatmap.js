@@ -4,11 +4,10 @@ import audioContext from "./audioContext.js";
 import AudioSprite from "./AudioSprite.js";
 import ImageSprite from "./ImageSprite.js";
 import { grid, rhythm_radius, beat_radius } from "./game.js";
-import { smoothstep } from "./util.js";
 
 const HIT_DISTANCE = 100;
 const TITLE_FONT_SCALE = 1 / 8;
-const INFO_FONT_SCALE = 1 / 10;
+const INFO_FONT_SCALE = 1 / 12;
 const KEY_FONT_SCALE = 1 / 10;
 const COMBO_TEXT_COLOR = "lightgray";
 const COMBO_FONT_SCALE = 4;
@@ -154,8 +153,25 @@ function clear_beatmap() {
         beatmap.maxCombo = beatmap.combo;
     beatmap.done = true;
     clears++;
-    if (beatmap.spareMeasures <= 0)
+    if (beatmap.spareMeasures <= 0) {
         clears = 0;
+        beatmap.score = 0;
+    } else {
+        let product = 1;
+        // only works for 2 rhythms
+        for (let rhythm of beatmap.rhythms) {
+            let prime = rhythm.subdivisions.length;
+            while (prime !== 2 && prime % 2 === 0) prime /= 2;
+            while (prime !== 3 && prime % 3 === 0) prime /= 2;
+            while (prime !== 5 && prime % 5 === 0) prime /= 2;
+            while (prime !== 7 && prime % 7 === 0) prime /= 2;
+            product *= prime;
+        }
+        beatmap.score = (Math.ceil(beatmap.bpm / 10) * product) * (beatmap.spareMeasures * 4 + beatmap.maxCombo - beatmap.totalMisses);
+    }
+    if (!localStorage.getItem("top-clears") || clears > parseInt(localStorage.getItem("top-clears"))) {
+        localStorage.setItem("top-clears", clears);
+    }
 }
 
 function abc_blocks(context, text, size, cx, cy, t, noStroke) {
@@ -176,15 +192,12 @@ function abc_blocks(context, text, size, cx, cy, t, noStroke) {
             cy
         );
 
-        switch (t % 4) {
+        switch (t % 2) {
             case 0:
                 char = char.toLowerCase();
                 break;
             case 1:
                 char = char.toUpperCase();
-                break;
-            case 2:
-            case 3:
                 break;
         }
         let random_font = fonts[t % fonts.length];
@@ -211,7 +224,10 @@ function draw_intro(context) {
     context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillText("[ANY KEY] TO BEGIN", 0, grid/2);
+    context.fillText("[ANY KEY] TO BEGIN", 0, 0);
+
+    context.textBaseline = "bottom";
+    context.fillText("HIGHEST CLEARED : " + localStorage.getItem("top-clears"), 0, grid);
 }
 
 function draw_score(context, now) {
@@ -221,7 +237,7 @@ function draw_score(context, now) {
 
     if (beatmap.spareMeasures <= 0) {
         sprites.missImage.draw(context, grid / 2 * t, 0, grid, grid);
-    } else {
+    } else if (clears !== 10) {
         sprites.hitImage.draw(context, grid / 2 * t, 0, grid, grid);
     }
 
@@ -230,20 +246,25 @@ function draw_score(context, now) {
     context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
     context.textAlign = "center";
     context.textBaseline = "top";
-    if (beatmap.spareMeasures <= 0) {
+    if (clears === 10) {
+        context.fillText("YOU WIN", 0, -grid);
+    } else if (beatmap.spareMeasures <= 0) {
         context.fillText("GAME OVER", 0, -grid);
     } else {
         context.fillText(clears + " ROUND(S) CLEARED", 0, -grid);
     }
     
     context.textBaseline = "middle";
-    let x = -grid / 2 * t;
+    let x = clears === 10 ? 0 : -grid / 2 * t;
     let lines = [
         beatmap.bpm + " BPM",
         beatmap.rhythms[0].subdivisions.length + ":" + beatmap.rhythms[1].subdivisions.length,
         "x" + beatmap.maxCombo + " COMBO",
-        beatmap.totalMisses + " MISS(ES)"
+        beatmap.totalMisses + " MISS(ES)",
+        beatmap.spareMeasures + " SPARE MEASURES",
+        beatmap.score + " POINTS"
     ]
+
     let width = 0;
     let padding = grid / 16;
     let lineheight = grid * INFO_FONT_SCALE * 1.5;
@@ -265,7 +286,9 @@ function draw_score(context, now) {
     }
 
     context.textBaseline = "bottom";
-    if (beatmap.spareMeasures <= 0) {
+    if (clears === 10) {
+        context.fillText("[ANY KEY] TO KEEP GOING", 0, grid);
+    } else if (beatmap.spareMeasures <= 0) {
         context.fillText("[ANY KEY] TO RESTART", 0, grid);
     } else {
         context.fillText("[ANY KEY] TO CONTINUE", 0, grid);
