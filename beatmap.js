@@ -18,7 +18,7 @@ const TOP_LEVEL = 10;
 const SPARE_MEASURES = 8;
 const PADDING = 5;
 
-var clears = 9;
+var clears = 0;
 var hiscore = 0;
 
 var soundpacks = [
