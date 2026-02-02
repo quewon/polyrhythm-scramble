@@ -58,18 +58,18 @@ function generate_beatmap() {
     let pick;
     let keys;
 
-    if (clears < 1) {
-        bpm = 60 + Math.round(Math.random() * 20);
+    if (clears === 0) {
+        bpm = 80;
     } else if (clears < 4) {
-        bpm = 80 + Math.round(Math.random() * 20);
+        bpm = 60 + Math.round(Math.random() * 40);
     } else if (clears < 6) {
-        bpm = 80 + Math.round(Math.random() * 40);
+        bpm = 60 + Math.round(Math.random() * 60);
     } else if (clears < 8) {
-        bpm = 100 + Math.round(Math.random() * 40);
+        bpm = 80 + Math.round(Math.random() * 60);
     } else if (clears < 10) {
-        bpm = 100 + Math.round(Math.random() * 75);
+        bpm = 80 + Math.round(Math.random() * 80);
     } else {
-        bpm = 100 + Math.round(Math.random() * 100);
+        bpm = 100 + Math.round(Math.random() * 80);
     }
 
     if (clears < 1) {
