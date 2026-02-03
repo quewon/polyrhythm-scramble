@@ -24,6 +24,11 @@ const PADDING = 5;
 var clears = 0;
 var hiscore = 0;
 
+window.addEventListener("blur", () => {
+    if (beatmap)
+        pause_beatmap(beatmap.currentTime);
+})
+
 var soundpacks = [
     {
         hitSounds: [
@@ -878,15 +883,19 @@ function handle_hit(rhythm, beat) {
     beatmap.combo++;
 }
 
+function pause_beatmap(now) {
+    beatmap.paused = now;
+}
+
 function update_beatmap(delta, now) {
     if (beatmap && 'startTime' in beatmap) {
-        if (keypressed["Escape"]) {
-            if (beatmap.paused) {
+        if (beatmap.paused) {
+            if (Object.keys(keypressed).length > 0) {
                 beatmap.pauseDuration = now - beatmap.paused;
                 delete beatmap.paused;
-            } else {
-                beatmap.paused = now;
             }
+        } else if (keypressed["Escape"] && !beatmap.paused) {
+            pause_beatmap(now);
         }
 
         if (!beatmap.done) {
