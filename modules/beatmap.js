@@ -5,6 +5,8 @@ import AudioSprite from "./AudioSprite.js";
 import ImageSprite from "./ImageSprite.js";
 import { grid, rhythm_radius, beat_radius } from "game";
 
+const VERSION = 0.2;
+
 const HIT_DISTANCE = 150;
 const TITLE_FONT_SCALE = 1 / 8;
 const INFO_FONT_SCALE = 1 / 12;
@@ -314,6 +316,10 @@ let introAnimationStartTime;
 function draw_intro(context) {
     context.fillStyle = "black";
     context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
+
+    context.textBaseline = "bottom";
+    context.textAlign = "left";
+    context.fillText("v" + VERSION, -window.innerWidth/2 + PADDING, window.innerHeight/2 - PADDING);
 
     if (!resources_loaded) {
         context.textAlign = "center";
