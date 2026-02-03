@@ -838,7 +838,7 @@ function handle_miss(rhythm, beat) {
         beatmap.spareUsedTime = beatTime;
         beatmap.spareMeasures--;
         if (beatmap.spareMeasures <= 0) {
-            if (!beatmap.secondChance && beatmap.maxRoundCombo >= 2) {
+            if (!beatmap.secondChance) {
                 spawn_secondchance_particle();
                 beatmap.secondChance = true;
                 beatmap.spareMeasures = SECOND_CHANCE_SPARES;
