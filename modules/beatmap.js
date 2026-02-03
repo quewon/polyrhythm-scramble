@@ -455,7 +455,7 @@ function draw_gameover(context) {
 }
 
 function draw_score(context, now) {
-    let time = now - (beatmap.elapsed + beatmap.startTime);
+    let time = now - beatmap.currentTime;
     time = Math.min(1000, time);
     let t = time / 1000;
     let lineheight = grid * INFO_FONT_SCALE * UI_LINEHEIGHT;
@@ -824,7 +824,7 @@ function handle_miss(rhythm, beat) {
         beatmap.spareUsedTime = beatTime;
         beatmap.spareMeasures--;
         if (beatmap.spareMeasures <= 0) {
-            if (!beatmap.secondChance && beatmap.maxRoundCombo >= 3) {
+            if (!beatmap.secondChance && beatmap.maxRoundCombo >= 2) {
                 spawn_secondchance_particle();
                 beatmap.secondChance = true;
                 beatmap.spareMeasures = SECOND_CHANCE_SPARES;
