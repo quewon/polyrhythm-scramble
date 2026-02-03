@@ -9,6 +9,8 @@ document.addEventListener("keydown", e => {
     keydown[e.code] = true;
     keypressed[e.code] = true;
     keyvalue[e.code] = e.key;
+    if (e.code === "Space")
+        keyvalue[e.code] = "Space";
 })
 document.addEventListener("keyup", e => {
     keyreleased[e.code] = e.key;
