@@ -127,7 +127,7 @@ function generate_beatmap() {
     } else if (clears < 10) {
         bpm = 80 + Math.round(Math.random() * 80);
     } else {
-        bpm = 100 + Math.round(Math.random() * 80);
+        bpm = 100 + Math.round(Math.random() * 60);
     }
 
     if (clears < 1) {
