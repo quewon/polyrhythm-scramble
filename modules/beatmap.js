@@ -969,20 +969,22 @@ function update_beatmap(delta, now) {
                     }
                 }
 
-                if (!beatmap.secondChance && beatmap.localElapsed < rhythm.spawnTime - beat_length(rhythm)/2) {
-                    // count them in
-                    if (
-                        (
-                            rhythm.subdivisions[unadjustedBeat + rhythm.subdivisions.length] === 1 ||
-                            rhythm.subdivisions[unadjustedBeat + rhythm.subdivisions.length] === 3
-                        )
-                        &&
-                        rhythm.previousBeat !== unadjustedBeat &&
-                        beatmap.localElapsed >= unadjustedBeatTime &&
-                        unadjustedBeat < 0
-                    ) {
-                        beatmap.soundpack.countinSound.play();
-                        rhythm.previousBeat = unadjustedBeat;
+                if (beatmap.localElapsed < rhythm.spawnTime - beat_length(rhythm)/2) {
+                    if (!beatmap.secondChance) {
+                        // count them in
+                        if (
+                            (
+                                rhythm.subdivisions[unadjustedBeat + rhythm.subdivisions.length] === 1 ||
+                                rhythm.subdivisions[unadjustedBeat + rhythm.subdivisions.length] === 3
+                            )
+                            &&
+                            rhythm.previousBeat !== unadjustedBeat &&
+                            beatmap.localElapsed >= unadjustedBeatTime &&
+                            unadjustedBeat < 0
+                        ) {
+                            beatmap.soundpack.countinSound.play();
+                            rhythm.previousBeat = unadjustedBeat;
+                        }
                     }
                     
                     allComboReady = false;
