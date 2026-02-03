@@ -215,6 +215,7 @@ function start_beatmap(now) {
     beatmap.measure = 60 / beatmap.bpm * 4000;
     beatmap.spawnLeadup = beatmap.measure;
     beatmap.startTime = now;
+    beatmap.pauseDuration = 0;
     beatmap.localElapsed = 0;
     beatmap.adjustedElapsed = 0;
     beatmap.elapsed = 0;
@@ -436,6 +437,14 @@ function draw_intro(context) {
         }
         context.stroke();
     }
+}
+
+function draw_pausemenu(context) {
+    context.fillStyle = "black";
+    context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText("PAUSED", 0, 0);
 }
 
 function draw_gameover(context) {
@@ -750,7 +759,7 @@ function draw_rhythm(context, rhythm) {
 function draw_beatmap(context, now) {
     if (beatmap && 'startTime' in beatmap) {
         if (!beatmap.done) {
-            if (!('clearTime' in beatmap)) {
+            if (!beatmap.paused && !('clearTime' in beatmap)) {
                 draw_circles(context);
                 
                 for (let rhythm of beatmap.rhythms) {
@@ -800,6 +809,9 @@ function draw_beatmap(context, now) {
                     context.restore();
                 }
             }
+
+            if (beatmap.paused)
+                draw_pausemenu(context);
         } else {
             if (beatmap.spareMeasures <= 0)
                 draw_gameover(context)
@@ -858,10 +870,21 @@ function handle_hit(rhythm, beat) {
 
 function update_beatmap(delta, now) {
     if (beatmap && 'startTime' in beatmap) {
+        if (keypressed["Escape"]) {
+            if (beatmap.paused) {
+                beatmap.pauseDuration = now - beatmap.paused;
+                delete beatmap.paused;
+            } else {
+                beatmap.paused = now;
+            }
+        }
+
         if (!beatmap.done) {
+            if (beatmap.paused) return;
+
             let latency = (audioContext.baseLatency + audioContext.outputLatency) * 1000;
             beatmap.currentTime = now;
-            beatmap.elapsed = now - beatmap.startTime;
+            beatmap.elapsed = now - beatmap.startTime - beatmap.pauseDuration;
             beatmap.localElapsed = beatmap.elapsed - beatmap.spawnTime;
             beatmap.adjustedElapsed = beatmap.localElapsed - latency;
 
@@ -886,15 +909,15 @@ function update_beatmap(delta, now) {
             let allComboReady = true;
 
             // key unregistration
-            if (keypressed["Escape"]) {
-                for (let i=beatmap.rhythms.length-1; i>=0; i--) {
-                    let rhythm = beatmap.rhythms[i];
-                    if ('keyCode' in rhythm && rhythm.keyCode !== "") {
-                        delete rhythm.keyCode;
-                        break;
-                    }
-                }
-            }
+            // if (keypressed["Escape"]) {
+            //     for (let i=beatmap.rhythms.length-1; i>=0; i--) {
+            //         let rhythm = beatmap.rhythms[i];
+            //         if ('keyCode' in rhythm && rhythm.keyCode !== "") {
+            //             delete rhythm.keyCode;
+            //             break;
+            //         }
+            //     }
+            // }
         
             for (let rhythmIndex=0; rhythmIndex<beatmap.rhythms.length; rhythmIndex++) {
                 let rhythm = beatmap.rhythms[rhythmIndex];

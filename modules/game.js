@@ -27,7 +27,7 @@ function resize() {
 
     grid = width / 2;
     rhythm_radius = grid / 2 * 0.8;
-    beat_radius = Math.max(window.devicePixelRatio * 3, grid / 30);
+    beat_radius = grid / 30;
 }
 
 function draw(now) {
