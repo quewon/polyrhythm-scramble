@@ -225,6 +225,7 @@ function start_beatmap(now) {
     beatmap.roundCombo = 0;
     beatmap.maxRoundCombo = 0;
     beatmap.spareMeasures = SPARE_MEASURES;
+    beatmap.measuresUsed = 0;
     for (let rhythm of beatmap.rhythms) {
         rhythm.combo = 0;
         rhythm.roundCombo = 0;
@@ -253,7 +254,7 @@ function clear_beatmap(now) {
         let product = 1;
         for (let prime of uniquePrimes)
             product *= prime;
-        beatmap.score = (beatmap.bpm * product * beatmap.spareMeasures) - (beatmap.bpm * beatmap.totalMisses);
+        beatmap.score = (beatmap.bpm * product) - (10 * beatmap.measuresUsed);
         hiscore += beatmap.score;
     } else {
         beatmap.score = 0;
@@ -837,6 +838,7 @@ function handle_miss(rhythm, beat) {
         let beatTime = beat * beat_length(rhythm) + rhythm.spawnTime;
         beatmap.spareUsedTime = beatTime;
         beatmap.spareMeasures--;
+        beatmap.measuresUsed++;
         if (beatmap.spareMeasures <= 0) {
             if (!beatmap.secondChance) {
                 spawn_secondchance_particle();
