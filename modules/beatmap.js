@@ -891,7 +891,7 @@ function update_beatmap(delta, now) {
     if (beatmap && 'startTime' in beatmap) {
         if (beatmap.paused) {
             if (Object.keys(keypressed).length > 0) {
-                beatmap.pauseDuration = now - beatmap.paused;
+                beatmap.pauseDuration += now - beatmap.paused;
                 delete beatmap.paused;
             }
         } else if (keypressed["Escape"] && !beatmap.paused) {
