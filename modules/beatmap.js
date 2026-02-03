@@ -226,8 +226,6 @@ function start_beatmap(now) {
     beatmap.localElapsed = 0;
     beatmap.adjustedElapsed = 0;
     beatmap.elapsed = 0;
-    beatmap.maxCombo = 0;
-    beatmap.totalMisses = 0;
     beatmap.combo = 0;
     beatmap.roundCombo = 0;
     beatmap.maxRoundCombo = 0;
@@ -243,8 +241,6 @@ function start_beatmap(now) {
 }
 
 function clear_beatmap(now) {
-    if (beatmap.combo > beatmap.maxCombo)
-        beatmap.maxCombo = beatmap.combo;
     beatmap.done = true;
     clears++;
     if (beatmap.spareMeasures > 0) {
@@ -508,8 +504,7 @@ function draw_score(context, now) {
         let lines = [
             beatmap.bpm + " BPM",
             beatmap.rhythms[0].subdivisions.length + ":" + beatmap.rhythms[1].subdivisions.length,
-            beatmap.spareMeasures + " SPARE MEASURES",
-            beatmap.totalMisses + " MISS(ES)",
+            beatmap.measuresUsed + " MEASURES MISSED",
             beatmap.score + " POINTS"
         ]
 
@@ -839,12 +834,9 @@ function draw_beatmap(context, now) {
 
 function handle_miss(rhythm, beat) {
     rhythm.previousMiss = beat;
-    if (beatmap.combo > beatmap.maxCombo)
-        beatmap.maxCombo = beatmap.combo;
     rhythm.combo = 0;
     beatmap.combo = 0;
     beatmap.roundCombo = 0;
-    beatmap.totalMisses++;
     if (!beatmap.spareUsedTime || beatmap.adjustedElapsed - beatmap.spareUsedTime >= beatmap.measure) {
         let beatTime = beat * beat_length(rhythm) + rhythm.spawnTime;
         beatmap.spareUsedTime = beatTime;
