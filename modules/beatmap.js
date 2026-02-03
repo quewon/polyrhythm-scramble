@@ -256,7 +256,7 @@ function clear_beatmap(now) {
         let product = 1;
         for (let prime of uniquePrimes)
             product *= prime;
-        beatmap.score = (beatmap.bpm * product) - (10 * beatmap.measuresUsed);
+        beatmap.score = (beatmap.bpm * product) - (50 * beatmap.measuresUsed);
         hiscore += beatmap.score;
     } else {
         beatmap.score = 0;
