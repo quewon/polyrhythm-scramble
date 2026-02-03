@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>polyrhythm scramble</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <style>
         @font-face {
             font-family: 'Babel Sans';
@@ -40,9 +41,11 @@
 <script type="importmap">
     {
         "imports": {
-            "modules/game.js": "./modules/game.js?v=0.1"
+            "game": "./modules/game.js?v=0.1"
         }
     }
 </script>
-<script src="modules/game.js" type="module"></script>
+<script type="module">
+    import * as game from "game";
+</script>
 </html>

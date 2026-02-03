@@ -3,7 +3,7 @@ import { keydown, keypressed, keyreleased, keyvalue } from "./keyboard.js";
 import audioContext from "./audioContext.js";
 import AudioSprite from "./AudioSprite.js";
 import ImageSprite from "./ImageSprite.js";
-import { grid, rhythm_radius, beat_radius } from "./game.js";
+import { grid, rhythm_radius, beat_radius } from "game";
 
 const HIT_DISTANCE = 150;
 const TITLE_FONT_SCALE = 1 / 8;
