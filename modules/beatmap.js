@@ -16,6 +16,7 @@ const UI_FONT = "'Arial Narrow', 'Babel Sans', sans-serif";
 const UI_LINEHEIGHT = 1.5;
 const TOP_LEVEL = 10;
 const SPARE_MEASURES = 8;
+const SECOND_CHANCE_SPARES = 2;
 const PADDING = 5;
 
 var clears = 0;
@@ -111,7 +112,7 @@ function get_resources_loaded() {
 }
 
 function generate_beatmap() {
-    let respack = soundpacks[soundpacks.length * Math.random() | 0];
+    let soundpack = soundpacks[soundpacks.length * Math.random() | 0];
     let bpm;
     let pick;
     let keys;
@@ -192,7 +193,7 @@ function generate_beatmap() {
     beatmap = {
         bpm: bpm,
         spawnTime: 1200,
-        respack: respack,
+        soundpack: soundpack,
         rhythms: [
             {
                 spawnTime: measure,
@@ -201,7 +202,7 @@ function generate_beatmap() {
                 color: "blue",
             },
             {
-                spawnTime: measure * 3 + (measure / 4) * Math.floor(Math.random() * 4),
+                spawnTime: measure * 3,
                 subdivisions: random_subdivisions(),
                 position: [0.5, 0],
                 color: "red",
@@ -221,6 +222,7 @@ function start_beatmap(now) {
     beatmap.totalMisses = 0;
     beatmap.combo = 0;
     beatmap.roundCombo = 0;
+    beatmap.maxRoundCombo = 0;
     beatmap.spareMeasures = SPARE_MEASURES;
     for (let rhythm of beatmap.rhythms) {
         rhythm.combo = 0;
@@ -231,14 +233,12 @@ function start_beatmap(now) {
     }
 }
 
-function clear_beatmap() {
+function clear_beatmap(now) {
     if (beatmap.combo > beatmap.maxCombo)
         beatmap.maxCombo = beatmap.combo;
     beatmap.done = true;
     clears++;
-    if (beatmap.spareMeasures <= 0) {
-        beatmap.score = 0;
-    } else {
+    if (beatmap.spareMeasures > 0) {
         let uniquePrimes = [];
         for (let rhythm of beatmap.rhythms) {
             let prime = rhythm.subdivisions.length;
@@ -254,6 +254,8 @@ function clear_beatmap() {
             product *= prime;
         beatmap.score = (beatmap.bpm * product * beatmap.spareMeasures) - (beatmap.bpm * beatmap.totalMisses);
         hiscore += beatmap.score;
+    } else {
+        beatmap.score = 0;
     }
     if (!localStorage.getItem("top-clears") || clears > parseInt(localStorage.getItem("top-clears"))) {
         localStorage.setItem("top-clears", clears);
@@ -400,15 +402,26 @@ function draw_intro(context) {
     }
 }
 
+function draw_gameover(context) {
+    context.fillStyle = "black";
+    context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
+    context.textAlign = "center";
+    context.textBaseline = "top";
+    context.fillText("GAME OVER", 0, -grid);
+
+    sprites.missImage.draw(context, 0, 0, grid, grid);
+
+    context.textBaseline = "bottom";
+    context.fillText("[ANY KEY] TO RESTART", 0, grid - PADDING);
+}
+
 function draw_score(context, now) {
     let time = now - (beatmap.elapsed + beatmap.startTime);
     time = Math.min(1000, time);
     let t = time / 1000;
     let lineheight = grid * INFO_FONT_SCALE * UI_LINEHEIGHT;
 
-    if (beatmap.spareMeasures <= 0) {
-        sprites.missImage.draw(context, 0, 0, grid, grid);
-    } else if (clears === 10) {
+    if (clears === 10) {
         sprites.winImage.draw(context, 0, 0, grid * 3 * t, grid * 3 * (sprites.winImage.height / sprites.winImage.width) * t);
     } else {
         sprites.hitImage.draw(context, grid / 2 * t, 0, grid, grid);
@@ -419,9 +432,7 @@ function draw_score(context, now) {
     context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
     context.textAlign = "center";
     context.textBaseline = "top";
-    if (beatmap.spareMeasures <= 0) {
-        context.fillText("GAME OVER", 0, -grid);
-    } else if (clears === 10) {
+    if (clears === 10) {
         context.fillText("YOU WIN", 0, -grid);
     } else {
         context.fillText(clears + " ROUND(S) CLEARED", 0, -grid + PADDING);
@@ -461,9 +472,7 @@ function draw_score(context, now) {
     }
 
     context.textBaseline = "bottom";
-    if (beatmap.spareMeasures <= 0) {
-        context.fillText("[ANY KEY] TO RESTART", 0, grid - PADDING);
-    } else if (clears === 10) {
+    if (clears === 10) {
         context.fillText("[ANY KEY] TO KEEP GOING", 0, grid - PADDING);
     } else {
         context.fillText("[ANY KEY] TO CONTINUE", 0, grid - PADDING);
@@ -517,17 +526,35 @@ function draw_circles(context) {
         if (!rhythm_context_save(context, rhythm))
             continue;
 
+        context.strokeStyle = "black";
+        
+        for (let i=0; i<4; i++) {
+            let angle = i / 4 * Math.PI * 2 - Math.PI / 2;
+            let a = rhythm_radius + beat_radius * 2;
+            let b = rhythm_radius - beat_radius * 2;
+            
+            context.beginPath();
+            context.moveTo(
+                a * Math.cos(angle),
+                a * Math.sin(angle)
+            );
+            context.lineTo(
+                b * Math.cos(angle),
+                b * Math.sin(angle)
+            );
+            context.stroke();
+        }
+        
         context.lineWidth = 2;
-
         context.strokeStyle = "black";
         context.beginPath();
         context.arc(0, 0, rhythm_radius, rhythm_radius, 0, Math.PI * 2);
         context.stroke();
 
+        context.restore();
+
         context.fillStyle = "white";
         context.fill();
-
-        context.restore();
     }
 }
 
@@ -552,6 +579,8 @@ function draw_key_text(context, rhythm) {
     if (keyText) {
         context.fillStyle = rhythm.color;
         if (keyText === "[ANY KEY]") {
+            if (!('keyCode' in rhythm))
+                context.fillStyle = "lightgray";
             context.textAlign = "center";
             context.textBaseline = "middle";
             context.font = (grid * KEY_FONT_SCALE) + "px " + UI_FONT;
@@ -570,6 +599,9 @@ function draw_rhythm(context, rhythm) {
     if (!rhythm_context_save(context, rhythm)) return;
 
     let dot_alpha = Math.max(Math.min(1 - (rhythm.spawnTime - beatmap.adjustedElapsed) / beat_length(rhythm), 1), 0);
+
+    if (!('keyCode' in rhythm))
+        dot_alpha = 0;
 
     context.lineWidth = 2;
     
@@ -637,7 +669,7 @@ function draw_rhythm(context, rhythm) {
                 context.fillStyle = "white";
                 context.fill();
                 context.save();
-                    context.globalAlpha = dot_alpha;
+                    context.globalAlpha = dot_alpha / 10;
                     context.strokeStyle = rhythm.color;
                     context.stroke();
                 context.restore();
@@ -649,7 +681,7 @@ function draw_rhythm(context, rhythm) {
     let x = rhythm_radius * Math.cos(playheadAngle);
     let y = rhythm_radius * Math.sin(playheadAngle);
     context.beginPath();
-    context.arc(x, y, beat_radius * 2, 0, Math.PI * 2);
+    context.arc(x, y, beat_radius * 1.75, 0, Math.PI * 2);
     context.stroke();
 
     context.restore();
@@ -726,7 +758,10 @@ function draw_beatmap(context, now) {
                 }
             }
         } else {
-            draw_score(context, now);
+            if (beatmap.spareMeasures <= 0)
+                draw_gameover(context)
+            else
+                draw_score(context, now);
         }
     } else {
         draw_intro(context);
@@ -742,12 +777,30 @@ function handle_miss(rhythm, beat) {
     beatmap.roundCombo = 0;
     beatmap.totalMisses++;
     if (!beatmap.spareUsedTime || beatmap.adjustedElapsed - beatmap.spareUsedTime >= beatmap.measure) {
-        beatmap.spareUsedTime = beatmap.adjustedElapsed;
+        let beatTime = beat * beat_length(rhythm) + rhythm.spawnTime;
+        beatmap.spareUsedTime = beatTime;
         beatmap.spareMeasures--;
         if (beatmap.spareMeasures <= 0) {
-            beatmap.clearTime = beatmap.adjustedElapsed;
-            for (let sound of beatmap.respack.sustainSounds) {
-                sound.stop(0.2);
+            if (!beatmap.secondChance && beatmap.maxRoundCombo >= 3) {
+                spawn_secondchance_particle();
+                beatmap.secondChance = true;
+                beatmap.spareMeasures = SECOND_CHANCE_SPARES;
+                beatmap.startTime = beatmap.currentTime;
+                beatmap.spawnTime = 0;
+                beatmap.bpm = Math.floor(beatmap.bpm * 0.75);
+                beatmap.measure = 60 / beatmap.bpm * 4000;
+                delete beatmap.metronomePlayed;
+                for (let rhythm of beatmap.rhythms) {
+                    delete rhythm.previousBeat;
+                    delete rhythm.previousMiss;
+                    delete rhythm.previousHit;
+                    rhythm.spawnTime = beatmap.measure;
+                }
+            } else {
+                beatmap.clearTime = beatmap.adjustedElapsed;
+                for (let sound of beatmap.soundpack.sustainSounds) {
+                    sound.stop(0.2);
+                }
             }
         }
     }
@@ -771,18 +824,18 @@ function update_beatmap(delta, now) {
 
             if ('clearTime' in beatmap) {
                 if (beatmap.adjustedElapsed - beatmap.clearTime >= beatmap.measure / 2)
-                    clear_beatmap();
+                    clear_beatmap(now);
                 return;
             }
 
             if (beatmap.localElapsed >= 0) {
-                let quarter = 60 / beatmap.bpm * 1000;
+                let quarter = beatmap.measure / 4;
                 let lastMetronomeTime = Math.floor(beatmap.localElapsed / quarter) * quarter;
                 if (
                     !beatmap.metronomePlayed ||
                     lastMetronomeTime > beatmap.metronomePlayed
                 ) {
-                    beatmap.respack.metronomeSound.play();
+                    beatmap.soundpack.metronomeSound.play();
                     beatmap.metronomePlayed = beatmap.localElapsed;
                 }
             }
@@ -839,7 +892,7 @@ function update_beatmap(delta, now) {
                     }
                 }
 
-                if (beatmap.localElapsed < rhythm.spawnTime - beat_length(rhythm)/2) {
+                if (!beatmap.secondChance && beatmap.localElapsed < rhythm.spawnTime - beat_length(rhythm)/2) {
                     // count them in
                     if (
                         (
@@ -851,7 +904,7 @@ function update_beatmap(delta, now) {
                         beatmap.localElapsed >= unadjustedBeatTime &&
                         unadjustedBeat < 0
                     ) {
-                        beatmap.respack.countinSound.play();
+                        beatmap.soundpack.countinSound.play();
                         rhythm.previousBeat = unadjustedBeat;
                     }
                     
@@ -863,8 +916,8 @@ function update_beatmap(delta, now) {
                     rhythm.previousBeat = unadjustedBeat;
                     
                     let nextRhythm = beatmap.rhythms[rhythmIndex + 1];
-                    if (nextRhythm && !nextRhythm.keyRegistered && beatmap.adjustedElapsed >= nextRhythm.spawnTime - beatmap.measure - beatmap.measure/2) {
-                        nextRhythm.spawnTime += beatmap.measure / 2;
+                    if (nextRhythm && !nextRhythm.keyRegistered && beatmap.adjustedElapsed >= nextRhythm.spawnTime - beatmap.measure) {
+                        nextRhythm.spawnTime += beatmap.measure;
                     }
 
                     allComboReady = false;
@@ -949,11 +1002,11 @@ function update_beatmap(delta, now) {
                         if (inHitWindow && rhythm.previousHit !== closestBeat) {
                             handle_hit(rhythm, closestBeat);
                             spawn_hit_particle(rhythm, preciseSubdivision);
-                            beatmap.respack.hitSounds[rhythmIndex].play();
+                            beatmap.soundpack.hitSounds[rhythmIndex].play();
 
                             let nextSubdivision = (closestSubdivision + 1) % rhythm.subdivisions.length;
                             if (rhythm.subdivisions[nextSubdivision] >= 2) {
-                                beatmap.respack.sustainSounds[rhythmIndex].play();
+                                beatmap.soundpack.sustainSounds[rhythmIndex].play();
                             }
                         } else {
                             handle_miss(rhythm, closestBeat);
@@ -981,9 +1034,10 @@ function update_beatmap(delta, now) {
                         if (inHitWindow && rhythm.previousHit !== closestBeat) {
                             handle_hit(rhythm, closestBeat);
                             spawn_hit_particle(rhythm, preciseSubdivision);
-                            if (beatmap.respack.releaseSounds)
-                                beatmap.respack.releaseSounds[rhythmIndex].play();
-                        } else {
+                            if (beatmap.soundpack.releaseSounds)
+                                beatmap.soundpack.releaseSounds[rhythmIndex].play();
+                        } 
+                        else {
                             handle_miss(rhythm, closestBeat);
                             spawn_miss_particle(rhythm, preciseSubdivision);
                         }
@@ -1006,8 +1060,8 @@ function update_beatmap(delta, now) {
                     }
                 }
 
-                if (beatmap.respack.sustainSounds[rhythmIndex].playing && !keydown[rhythm.keyCode]) {
-                    beatmap.respack.sustainSounds[rhythmIndex].stop(0.01);
+                if (beatmap.soundpack.sustainSounds[rhythmIndex].playing && !keydown[rhythm.keyCode]) {
+                    beatmap.soundpack.sustainSounds[rhythmIndex].stop(0.01);
                 }
 
                 if (rhythm.combo < rhythm.subdivisions.length) {
@@ -1018,14 +1072,15 @@ function update_beatmap(delta, now) {
             }
 
             if (allComboReady) {
-                beatmap.respack.countdownSounds[beatmap.roundCombo].play();
+                beatmap.soundpack.countdownSounds[beatmap.roundCombo].play();
                 beatmap.roundCombo++;
+                beatmap.maxRoundCombo = Math.max(beatmap.roundCombo, beatmap.maxRoundCombo);
                 for (let rhythm of beatmap.rhythms) {
                     rhythm.combo = rhythm.combo % rhythm.subdivisions.length;
                 }
                 if (!beatmap.clearTime && beatmap.roundCombo >= 4) {
                     beatmap.clearTime = beatmap.localElapsed;
-                    for (let sound of beatmap.respack.sustainSounds) {
+                    for (let sound of beatmap.soundpack.sustainSounds) {
                         sound.stop(0.2);
                     }
                 }
@@ -1041,6 +1096,8 @@ function update_beatmap(delta, now) {
                     hiscore = 0;
                 }
                 
+                if (beatmap.soundpack.countdownSounds[3].playing)
+                    beatmap.soundpack.countdownSounds[3].stop(0.2);
                 generate_beatmap();
                 start_beatmap(now);
             }
@@ -1053,6 +1110,26 @@ function update_beatmap(delta, now) {
             start_beatmap(now);
         }
     }
+}
+
+function spawn_secondchance_particle() {
+    const lifetime = beatmap.measure;
+    spawn_particle({
+        lifetime: lifetime,
+        size: grid / 4,
+        draw: function(context) {
+            context.save();
+            context.fillStyle = "lightgray";
+            context.globalAlpha = this.lifetime / lifetime;
+            let y = 0;
+            abc_blocks(context, "SECOND", this.size, 0, y - this.size/2);
+            abc_blocks(context, "CHANCE!", this.size, 0, y + this.size/2);
+            context.restore();
+        },
+        update: function(delta) {
+            this.size += delta/200;
+        }
+    })
 }
 
 function spawn_roundcombo_particle() {

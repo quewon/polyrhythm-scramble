@@ -211,7 +211,7 @@ export default class AudioSprite {
                         if (this.onended) this.onended();
                         this.gain.disconnect();
                     }
-                }, 5000 * fadeinterval);
+                }, 10000 * fadeinterval);
             } else {
                 this.source.stop();
                 this.source = null;
