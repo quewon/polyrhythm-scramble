@@ -1,7 +1,10 @@
-import { keydown, keypressed, keyreleased } from "./keyboard.js";
+import { keydown, keypressed, keyreleased, keyvalue } from "./keyboard.js";
 
 var lPointer = null;
 var rPointer = null;
+
+keyvalue["LeftTouch"] = "";
+keyvalue["RightTouch"] = "";
 
 document.addEventListener("pointerdown", e => {
     if (e.pointerType === "mouse") return;

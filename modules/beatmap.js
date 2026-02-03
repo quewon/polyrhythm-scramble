@@ -1,5 +1,5 @@
 import { spawn_particle } from "./particle.js";
-import { keydown, keypressed, keyreleased } from "./keyboard.js";
+import { keydown, keypressed, keyreleased, keyvalue } from "./keyboard.js";
 import audioContext from "./audioContext.js";
 import AudioSprite from "./AudioSprite.js";
 import ImageSprite from "./ImageSprite.js";
@@ -338,6 +338,24 @@ function draw_intro(context) {
         context.fillStyle = "black";
         context.fillText("hiscore", 0, -lineheight/2);
         context.fillText(hiscore, 0, lineheight/2);
+
+        hiscore = parseInt(hiscore);
+        let r = rhythm_radius / 10;
+        context.fillStyle = "cyan";
+        for (let i=0; i<Math.floor(hiscore / 100000); i++) {
+            context.save();
+            let angle = i * 100000 / hiscore * Math.PI * 2 - Math.PI/1.5;
+            context.translate(
+                Math.cos(angle) * rhythm_radius * 0.7,
+                Math.sin(angle) * rhythm_radius * 0.7
+            );
+            context.beginPath();
+            context.arc(0, 0, r, 0, Math.PI*2);
+            context.fill();
+            context.stroke();
+            context.restore();
+        }
+
         context.restore();
     }
 
@@ -359,6 +377,24 @@ function draw_intro(context) {
         context.fillStyle = "black";
         context.fillText("highest clear", 0, -lineheight/2);
         context.fillText(topclears, 0, lineheight/2);
+
+        topclears = parseInt(topclears);
+        let r = rhythm_radius / 10;
+        context.fillStyle = "yellow";
+        for (let i=0; i<Math.floor(topclears / 10); i++) {
+            context.save();
+            let angle = i * 10 / topclears * Math.PI * 2 - Math.PI/1.5;
+            context.translate(
+                Math.cos(angle) * rhythm_radius * 0.7,
+                Math.sin(angle) * rhythm_radius * 0.7
+            );
+            context.beginPath();
+            context.arc(0, 0, r, 0, Math.PI*2);
+            context.fill();
+            context.stroke();
+            context.restore();
+        }
+
         context.restore();
     }
 
@@ -403,6 +439,8 @@ function draw_intro(context) {
 }
 
 function draw_gameover(context) {
+    let lineheight = grid * INFO_FONT_SCALE * UI_LINEHEIGHT;
+
     context.fillStyle = "black";
     context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
     context.textAlign = "center";
@@ -412,7 +450,8 @@ function draw_gameover(context) {
     sprites.missImage.draw(context, 0, 0, grid, grid);
 
     context.textBaseline = "bottom";
-    context.fillText("[ANY KEY] TO RESTART", 0, grid - PADDING);
+    context.fillText("[ANY KEY] TO RESTART", 0, grid - PADDING - lineheight);
+    context.fillText("[ESC] TO RETURN TO MAIN", 0, grid - PADDING);
 }
 
 function draw_score(context, now) {
@@ -473,10 +512,11 @@ function draw_score(context, now) {
 
     context.textBaseline = "bottom";
     if (clears === 10) {
-        context.fillText("[ANY KEY] TO KEEP GOING", 0, grid - PADDING);
+        context.fillText("[ANY KEY] TO KEEP GOING", 0, grid - PADDING - lineheight);
     } else {
-        context.fillText("[ANY KEY] TO CONTINUE", 0, grid - PADDING);
+        context.fillText("[ANY KEY] TO CONTINUE", 0, grid - PADDING - lineheight);
     }
+    context.fillText("[ESC] TO RETURN TO MAIN", 0, grid - PADDING);
 }
 
 function draw_rhythm_shape(context, rhythm, rx, ry) {
@@ -561,7 +601,7 @@ function draw_circles(context) {
 function draw_key_text(context, rhythm) {
     if (!rhythm_context_save(context, rhythm)) return;
 
-    let keyText = rhythm.keyCode;
+    let keyText = keyvalue[rhythm.keyCode];
     if (!keyText) {
         for (let compare of beatmap.rhythms) {
             if (!('keyCode' in compare)) {
@@ -571,9 +611,12 @@ function draw_key_text(context, rhythm) {
             }
         }
     } else {
-        keyText = keyText.replaceAll("Key", "");
-        keyText = keyText.replaceAll("Digit", "");
-        keyText = keyText.replaceAll("Control", "Ctrl");
+        keyText = keyText
+            .replaceAll("Control", "Ctrl")
+            .replaceAll("ArrowLeft", "←")
+            .replaceAll("ArrowUp", "↑")
+            .replaceAll("ArrowDown", "↓")
+            .replaceAll("ArrowRight", "→")
     }
     
     if (keyText) {
@@ -1089,13 +1132,14 @@ function update_beatmap(delta, now) {
             }
         } else {
             // press any key to continue
-            if (Object.keys(keypressed).length > 0) {
+            if (keypressed["Escape"]) {
+                beatmap = null;
+            } else if (Object.keys(keypressed).length > 0) {
                 // restart
                 if (beatmap.spareMeasures <= 0) {
                     clears = 0;
                     hiscore = 0;
                 }
-                
                 if (beatmap.soundpack.countdownSounds[3].playing)
                     beatmap.soundpack.countdownSounds[3].stop(0.2);
                 generate_beatmap();

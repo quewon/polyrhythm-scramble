@@ -1,15 +1,17 @@
 var keydown = {};
 var keypressed = {};
 var keyreleased = {};
+var keyvalue = {};
 
 document.addEventListener("keydown", e => {
     if (e.repeat)
         return;
     keydown[e.code] = true;
     keypressed[e.code] = true;
+    keyvalue[e.code] = e.key;
 })
 document.addEventListener("keyup", e => {
-    keyreleased[e.code] = true;
+    keyreleased[e.code] = e.key;
     delete keydown[e.code];
 })
 
@@ -18,4 +20,4 @@ function update_keyboard() {
     keypressed = {};
 }
 
-export { keydown, keypressed, keyreleased, update_keyboard };
+export { keydown, keypressed, keyreleased, keyvalue, update_keyboard };
