@@ -308,7 +308,7 @@ function abc_blocks(context, text, size, cx, cy, t, noStroke) {
     }
 }
 
-let startTime = new Date().getTime();
+let introAnimationStartTime;
 
 function draw_intro(context) {
     context.fillStyle = "black";
@@ -319,6 +319,8 @@ function draw_intro(context) {
         context.textBaseline = "bottom";
         context.fillText("LOADING...", 0, 0);
         return;
+    } else if (!introAnimationStartTime) {
+        introAnimationStartTime = new Date().getTime();
     }
 
     const lineheight = grid * INFO_FONT_SCALE * 1.2;
@@ -407,7 +409,7 @@ function draw_intro(context) {
     context.fillText("[ANY KEY] TO BEGIN", 0, grid/1.2);
 
     if (!hiscore || !topclears) {
-        let t = Math.floor((new Date().getTime() - startTime) / 500);
+        let t = Math.floor((new Date().getTime() - introAnimationStartTime) / 500);
         
         context.beginPath();
         context.strokeStyle = "black";
@@ -1154,8 +1156,9 @@ function update_beatmap(delta, now) {
                 spawn_roundcombo_particle();
             }
         } else {
-            // press any key to continue
             if (keypressed["Escape"]) {
+                // return to main
+                introAnimationStartTime = new Date().getTime();
                 beatmap = null;
             } else if (Object.keys(keypressed).length > 0) {
                 // restart
