@@ -851,8 +851,10 @@ function handle_miss(rhythm, beat) {
                 beatmap.spawnTime = 0;
                 beatmap.bpm = Math.floor(beatmap.bpm * 0.75);
                 beatmap.measure = 60 / beatmap.bpm * 4000;
+                delete beatmap.spareUsedTime;
                 delete beatmap.metronomePlayed;
                 for (let rhythm of beatmap.rhythms) {
+                    delete rhythm.combo;
                     delete rhythm.previousBeat;
                     delete rhythm.previousMiss;
                     delete rhythm.previousHit;
@@ -969,22 +971,20 @@ function update_beatmap(delta, now) {
                     }
                 }
 
-                if (beatmap.localElapsed < rhythm.spawnTime - beat_length(rhythm)/2) {
-                    if (!beatmap.secondChance) {
-                        // count them in
-                        if (
-                            (
-                                rhythm.subdivisions[unadjustedBeat + rhythm.subdivisions.length] === 1 ||
-                                rhythm.subdivisions[unadjustedBeat + rhythm.subdivisions.length] === 3
-                            )
-                            &&
-                            rhythm.previousBeat !== unadjustedBeat &&
-                            beatmap.localElapsed >= unadjustedBeatTime &&
-                            unadjustedBeat < 0
-                        ) {
-                            beatmap.soundpack.countinSound.play();
-                            rhythm.previousBeat = unadjustedBeat;
-                        }
+                if (!beatmap.secondChance && beatmap.localElapsed < rhythm.spawnTime - beat_length(rhythm)/2) {
+                    // count them in
+                    if (
+                        (
+                            rhythm.subdivisions[unadjustedBeat + rhythm.subdivisions.length] === 1 ||
+                            rhythm.subdivisions[unadjustedBeat + rhythm.subdivisions.length] === 3
+                        )
+                        &&
+                        rhythm.previousBeat !== unadjustedBeat &&
+                        beatmap.localElapsed >= unadjustedBeatTime &&
+                        unadjustedBeat < 0
+                    ) {
+                        beatmap.soundpack.countinSound.play();
+                        rhythm.previousBeat = unadjustedBeat;
                     }
                     
                     allComboReady = false;
