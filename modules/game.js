@@ -2,8 +2,10 @@ import { draw_particles, update_particles } from "./particle.js";
 import { update_keyboard } from "./keyboard.js";
 import { draw_beatmap, update_beatmap } from "./beatmap.js";
 import "./touch.js";
+import ImageSprite from "./ImageSprite.js";
 
 var context = document.querySelector("canvas").getContext("2d", {
+    alpha: true,
     desynchronized: true
 });
 context.imageSmoothingEnabled = false;
@@ -28,7 +30,6 @@ function resize() {
 
 function draw(now) {
     context.resetTransform();
-    context.fillStyle = "white";
     context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     context.translate(context.canvas.width/2, context.canvas.height/2);
     context.scale(window.devicePixelRatio, window.devicePixelRatio);

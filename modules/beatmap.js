@@ -5,11 +5,11 @@ import AudioSprite from "./AudioSprite.js";
 import ImageSprite from "./ImageSprite.js";
 import { game_width, game_height } from "game";
 
-const VERSION = 0.2;
+const VERSION = 0.3;
+const MAX_LEVEL = 20;
 
 const BEAT_RADIUS_SCALE = 1/60;
 const RHYTHM_RADIUS_SCALE = 1/5;
-
 const HIT_DISTANCE = 150;
 const TITLE_FONT_SCALE = 1/16;
 const INFO_FONT_SCALE = 1/24;
@@ -26,9 +26,9 @@ const SPARE_MEASURES = 8;
 const SECOND_CHANCE_SPARES = 2;
 const PADDING = 5;
 
-// var clears = localStorage.getItem("top-clears") ? Math.floor(localStorage.getItem("top-clears") / 10) * 10 : 0;
-var clears = 9;
+var clears = localStorage.getItem("top-clears") ? Math.floor(localStorage.getItem("top-clears") / 10) * 10 : 0;
 var hiscore = 0;
+var checkpoint = false;
 
 window.addEventListener("blur", () => {
     if (beatmap)
@@ -52,7 +52,7 @@ var checkpoints = [
             context.stroke();
             context.restore();
         }
-    }
+    },
 ]
 var soundpacks = [
     {
@@ -149,37 +149,29 @@ function generate_beatmap() {
     let soundpack = soundpacks[soundpacks.length * Math.random() | 0];
     let bpm;
     let pick;
-    let keys;
+    let keys = (clears / 10 | 0) + 1;
 
-    if (clears < 10) {
-        keys = 2;
-    } else if (clears < 20) {
-        keys = 2 + Math.ceil(Math.random() * 1);
-    } else {
-        keys = 2 + Math.ceil(Math.random() * 2);
-    }
-
-    if (clears % 10 === 0) {
+    if (clears < MAX_LEVEL && clears % 10 === 0) {
         bpm = 80;
-    } else if (clears % 10 < 4) {
+    } else if (clears < MAX_LEVEL && clears % 10 < 4) {
         bpm = 60 + Math.round(Math.random() * 40);
-    } else if (clears % 10 < 6) {
+    } else if (clears < MAX_LEVEL && clears % 10 < 6) {
         bpm = 60 + Math.round(Math.random() * 60);
-    } else if (clears % 10 < 8) {
+    } else if (clears < MAX_LEVEL && clears % 10 < 8) {
         bpm = 80 + Math.round(Math.random() * 60);
     } else {
         bpm = 80 + Math.round(Math.random() * 80);
     }
 
-    if (clears % 10 < 1) {
+    if (clears < MAX_LEVEL && clears % 10 < 1) {
         pick = [1, 2];
-    } else if (clears % 10 < 3) {
+    } else if (clears < MAX_LEVEL && clears % 10 < 3) {
         pick = [1, 2, 3, 4];
-    } else if (clears % 10 < 5) {
+    } else if (clears < MAX_LEVEL && clears % 10 < 5) {
         pick = [1, 2, 4, 5];
-    } else if (clears % 10 < 7) {
+    } else if (clears < MAX_LEVEL && clears % 10 < 7) {
         pick = [2, 3, 4, 5, 6]
-    } else if (clears % 10 < 9) {
+    } else if (clears < MAX_LEVEL && clears % 10 < 9) {
         pick = [2, 3, 4, 5, 6, 8];
     } else {
         pick = [2, 3, 4, 5, 6, 7, 8];
@@ -219,31 +211,30 @@ function generate_beatmap() {
         }
         return a;
     }
-
-    let measure = 60 / bpm * 4000;
-
+    
     beatmap = {
         bpm: bpm,
         spawnTime: 1200,
         soundpack: soundpack,
-        rhythms: [
-            {
-                spawnTime: measure,
-                subdivisions: random_subdivisions(),
-                position: [-0.5, 0],
-                color: "blue",
-            },
-            {
-                spawnTime: measure * 3,
-                subdivisions: random_subdivisions(),
-                position: [0.5, 0],
-                color: "red",
-            },
-        ],
+        rhythms: []
+    }
+
+    let measure = 60 / bpm * 4000;
+    for (let i=0; i<keys; i++) {
+        beatmap.rhythms.push({
+            spawnTime: measure + (i * measure * 2),
+            subdivisions: random_subdivisions(),
+            position: [
+                (i - (keys - 1)/2) * 1,
+                0
+            ],
+            color: ["blue", "red", "orange", "green"][i]
+        })
     }
 }
 
 function start_beatmap(now) {
+    beatmap.rhythmRadiusScale = 1/5;
     beatmap.measure = 60 / beatmap.bpm * 4000;
     beatmap.spawnLeadup = beatmap.measure;
     beatmap.startTime = now;
@@ -448,7 +439,11 @@ function draw_intro(context) {
 
     context.textAlign = "center";
     context.textBaseline = "bottom";
-    context.fillText("[ANY KEY] TO BEGIN", 0, hw/1.2);
+    if (clears > 0) {
+        context.fillText("[ANY KEY] TO CONTINUE", 0, hw/1.2);
+    } else {
+        context.fillText("[ANY KEY] TO BEGIN", 0, hw/1.2);
+    }
 
     if (!hiscore || !topclears) {
         let t = Math.floor((new Date().getTime() - introAnimationStartTime) / 500);
@@ -509,36 +504,33 @@ function draw_gameover(context) {
 }
 
 function draw_checkpoint(context) {
-    let lineheight = game_width * INFO_FONT_SCALE * UI_LINEHEIGHT;
-    let hh = game_height/2;
-    context.fillStyle = "black";
-    context.font = (game_width * INFO_FONT_SCALE) + "px " + UI_FONT;
-
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    context.fillText("CHECKPOINT", 0, -hh + PADDING);
-
-    context.textBaseline = "bottom";
-    context.fillText("[ANY KEY] TO KEEP GOING", 0, hh - PADDING - lineheight);
-    context.fillText("[ESC] TO RETURN TO MAIN", 0, hh - PADDING);
-
     let checkpoint = checkpoints[clears / 10 % checkpoints.length | 0];
-    lineheight = game_width * CHECKPOINT_FONT_SCALE * CHECKPOINT_LINEHEIGHT;
+    let lineheight = game_width * CHECKPOINT_FONT_SCALE * CHECKPOINT_LINEHEIGHT;
     context.font = "italic " + (game_width * CHECKPOINT_FONT_SCALE) + "px " + CHECKPOINT_FONT;
+    context.fillStyle = "black";
     let width = game_width - PADDING * 2;
     let height = width * (checkpoint.image.height / checkpoint.image.width);
-    let y = -lineheight;
 
-    checkpoint.image.draw(context, 0, y, width, height);
+    checkpoint.image.draw(context, 0, 0, width, height);
 
+    context.textAlign = "center";
     context.textBaseline = "bottom";
-    context.fillText(checkpoint.caption, 0, y + height/2 + lineheight);
+    context.fillText(checkpoint.caption, 0, height/2 + lineheight);
 
-    context.save();
-    context.translate(0, y);
     if (checkpoint.draw)
         checkpoint.draw(context, width, height);
-    context.restore();
+
+    let hw = game_width/2;
+    context.font = (game_width * INFO_FONT_SCALE) + "px " + UI_FONT;
+    lineheight = game_width * INFO_FONT_SCALE * CHECKPOINT_LINEHEIGHT;
+    let y = Math.min(-hw + PADDING, -height/2 - lineheight);
+    
+    context.textBaseline = "top";
+    context.textAlign = "left";
+    context.fillText("CHECKPOINT", -hw + PADDING, y);
+
+    context.textAlign = "right";
+    context.fillText("[ANY KEY] TO CONTINUE", hw - PADDING, y);
 }
 
 function draw_score(context, now) {
@@ -555,10 +547,17 @@ function draw_score(context, now) {
     let t = Math.min(1000, now - beatmap.currentTime) / 1000;
 
     sprites.hitImage.draw(context, hw / 2 * t, 0, hw, hw);
-    
+
+    let subdivisions = "";
+    for (let i=0; i<beatmap.rhythms.length; i++) {
+        let rhythm = beatmap.rhythms[i];
+        subdivisions += rhythm.subdivisions.length;
+        if (i < beatmap.rhythms.length - 1)
+            subdivisions += ":";
+    }
     let lines = [
         beatmap.bpm + " BPM",
-        beatmap.rhythms[0].subdivisions.length + ":" + beatmap.rhythms[1].subdivisions.length,
+        subdivisions,
         beatmap.measuresUsed + " MEASURES MISSED",
         beatmap.score + " POINTS"
     ]
@@ -588,7 +587,7 @@ function draw_score(context, now) {
 }
 
 function draw_rhythm_shape(context, rhythm, rx, ry) {
-    let rhythm_radius = game_width * RHYTHM_RADIUS_SCALE;
+    let rhythm_radius = game_width * beatmap.rhythmRadiusScale;
 
     if (rhythm.subdivisions.length === 1) {
         context.beginPath();
@@ -632,8 +631,8 @@ function rhythm_context_save(context, rhythm) {
 }
 
 function draw_circles(context) {
-    let rhythm_radius = game_width * RHYTHM_RADIUS_SCALE;
     let beat_radius = game_width * BEAT_RADIUS_SCALE;
+    let rhythm_radius = game_width * beatmap.rhythmRadiusScale;
     
     for (let rhythm of beatmap.rhythms) {
         if (!rhythm_context_save(context, rhythm))
@@ -714,7 +713,7 @@ function draw_key_text(context, rhythm) {
 function draw_rhythm(context, rhythm) {
     if (!rhythm_context_save(context, rhythm)) return;
 
-    let rhythm_radius = game_width * RHYTHM_RADIUS_SCALE;
+    let rhythm_radius = game_width * beatmap.rhythmRadiusScale;
     let beat_radius = game_width * BEAT_RADIUS_SCALE;
     let dot_alpha = Math.max(Math.min(1 - (rhythm.spawnTime - beatmap.adjustedElapsed) / beat_length(rhythm), 1), 0);
 
@@ -823,7 +822,7 @@ function draw_rhythm(context, rhythm) {
 }
 
 function draw_beatmap(context, now) {
-    if (beatmap && 'startTime' in beatmap) {
+    if (beatmap) {
         if (!beatmap.done) {
             if (!beatmap.paused && !('clearTime' in beatmap)) {
                 draw_circles(context);
@@ -841,16 +840,22 @@ function draw_beatmap(context, now) {
 
                     context.textBaseline = "top";
                     context.textAlign = "left";
-                    context.fillText("LEVEL " + clears, -hw + PADDING, -hw + PADDING);
+                    context.fillText("LEVEL " + Math.min(clears, MAX_LEVEL), -hw + PADDING, -hw + PADDING);
                     context.textAlign = "right";
                     context.fillText(beatmap.bpm + " BPM", hw - PADDING, -hw + PADDING);
 
                     context.textAlign = "center";
                     context.textBaseline = "middle";
-                    for (let rhythm of beatmap.rhythms) {
-                        context.fillText(rhythm.subdivisions.length, rhythm.position[0] * hw, hw/1.6);
+
+                    let spacing = game_width / (beatmap.rhythms.length * 2)
+
+                    for (let i=0; i<beatmap.rhythms.length; i++) {
+                        let rhythm = beatmap.rhythms[i];
+                        context.fillText(rhythm.subdivisions.length, -hw + spacing * (i * 2 + 1), hw/1.6);
+                        if (i < beatmap.rhythms.length - 1) {
+                            context.fillText(":", -hw + spacing * (i * 2 + 2), hw/1.6);
+                        }
                     }
-                    context.fillText(":", 0, hw/1.6)
 
                     context.restore();
                 }
@@ -883,11 +888,11 @@ function draw_beatmap(context, now) {
         } else {
             if (beatmap.spareMeasures <= 0)
                 draw_gameover(context);
-            else if (clears % 10 === 0)
-                draw_checkpoint(context);
             else
                 draw_score(context, now);
         }
+    } else if (checkpoint) {
+        draw_checkpoint(context);
     } else {
         draw_intro(context);
     }
@@ -943,7 +948,7 @@ function pause_beatmap(now) {
 }
 
 function update_beatmap(delta, now) {
-    if (beatmap && 'startTime' in beatmap) {
+    if (beatmap) {
         if (beatmap.paused) {
             if (Object.keys(keypressed).length > 0) {
                 beatmap.pauseDuration += now - beatmap.paused;
@@ -982,17 +987,6 @@ function update_beatmap(delta, now) {
 
             let allComboReady = true;
 
-            // key unregistration
-            // if (keypressed["Escape"]) {
-            //     for (let i=beatmap.rhythms.length-1; i>=0; i--) {
-            //         let rhythm = beatmap.rhythms[i];
-            //         if ('keyCode' in rhythm && rhythm.keyCode !== "") {
-            //             delete rhythm.keyCode;
-            //             break;
-            //         }
-            //     }
-            // }
-        
             for (let rhythmIndex=0; rhythmIndex<beatmap.rhythms.length; rhythmIndex++) {
                 let rhythm = beatmap.rhythms[rhythmIndex];
                 let closestBeat = Math.round((beatmap.adjustedElapsed - rhythm.spawnTime) / beat_length(rhythm));
@@ -1142,11 +1136,11 @@ function update_beatmap(delta, now) {
                         if (inHitWindow && rhythm.previousHit !== closestBeat) {
                             handle_hit(rhythm, closestBeat);
                             spawn_hit_particle(rhythm, preciseSubdivision);
-                            beatmap.soundpack.hitSounds[rhythmIndex].play();
+                            beatmap.soundpack.hitSounds[rhythmIndex % beatmap.soundpack.hitSounds.length].play();
 
                             let nextSubdivision = (closestSubdivision + 1) % rhythm.subdivisions.length;
                             if (rhythm.subdivisions[nextSubdivision] >= 2) {
-                                beatmap.soundpack.sustainSounds[rhythmIndex].play();
+                                beatmap.soundpack.sustainSounds[rhythmIndex % beatmap.soundpack.sustainSounds.length].play();
                             }
                         } else {
                             handle_miss(rhythm, closestBeat);
@@ -1175,7 +1169,7 @@ function update_beatmap(delta, now) {
                             handle_hit(rhythm, closestBeat);
                             spawn_hit_particle(rhythm, preciseSubdivision);
                             if (beatmap.soundpack.releaseSounds)
-                                beatmap.soundpack.releaseSounds[rhythmIndex].play();
+                                beatmap.soundpack.releaseSounds[rhythmIndex % beatmap.soundpack.releaseSounds.length].play();
                         } 
                         else {
                             handle_miss(rhythm, closestBeat);
@@ -1200,8 +1194,8 @@ function update_beatmap(delta, now) {
                     }
                 }
 
-                if (beatmap.soundpack.sustainSounds[rhythmIndex].playing && !keydown[rhythm.keyCode]) {
-                    beatmap.soundpack.sustainSounds[rhythmIndex].stop(0.01);
+                if (beatmap.soundpack.sustainSounds[rhythmIndex % beatmap.soundpack.sustainSounds.length].playing && !keydown[rhythm.keyCode]) {
+                    beatmap.soundpack.sustainSounds[rhythmIndex % beatmap.soundpack.sustainSounds.length].stop(0.01);
                 }
 
                 if (rhythm.combo < rhythm.subdivisions.length) {
@@ -1235,21 +1229,35 @@ function update_beatmap(delta, now) {
             } else if (Object.keys(keypressed).length > 0) {
                 // restart
                 if (beatmap.spareMeasures <= 0) {
-                    clears = 0;
+                    clears = localStorage.getItem("top-clears") ? Math.floor(localStorage.getItem("top-clears") / 10) * 10 : 0;
                     hiscore = 0;
                 }
                 if (beatmap.soundpack.countdownSounds[3].playing)
                     beatmap.soundpack.countdownSounds[3].stop(0.2);
-                generate_beatmap();
-                start_beatmap(now);
+                if (clears % 10 === 0 && !checkpoint) {
+                    checkpoint = true;
+                    beatmap = null;
+                } else {
+                    generate_beatmap();
+                    start_beatmap(now);
+                }
             }
+        }
+    } else if (checkpoint) {
+        if (Object.keys(keypressed).length > 0) {
+            checkpoint = false;
+            generate_beatmap();
+            start_beatmap(now);
         }
     } else {
         resources_loaded = get_resources_loaded();
         // press any key to begin
         if (resources_loaded && Object.keys(keypressed).length > 0) {
-            generate_beatmap();
-            start_beatmap(now);
+            checkpoint = checkpoint = clears > 0 && clears % 10 === 0;
+            if (!checkpoint) {
+                generate_beatmap();
+                start_beatmap(now);
+            }
         }
     }
 }
@@ -1391,7 +1399,7 @@ function spawn_hit_particle(rhythm, subdivision) {
         })
     }
 
-    let rhythm_radius = game_width * RHYTHM_RADIUS_SCALE;
+    let rhythm_radius = game_width * beatmap.rhythmRadiusScale;
     let beat_radius = game_width * BEAT_RADIUS_SCALE;
     let angle = (subdivision * Math.PI * 2 / rhythm.subdivisions.length) - Math.PI / 2;
     const lifetime = 60 / beatmap.bpm * 1000;
