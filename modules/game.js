@@ -4,7 +4,6 @@ import { draw_beatmap, update_beatmap } from "./beatmap.js";
 import "./touch.js";
 
 var context = document.querySelector("canvas").getContext("2d", {
-    alpha: false,
     desynchronized: true
 });
 context.imageSmoothingEnabled = false;
@@ -30,7 +29,7 @@ function resize() {
 function draw(now) {
     context.resetTransform();
     context.fillStyle = "white";
-    context.fillRect(0, 0, context.canvas.width, context.canvas.height);
+    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
     context.translate(context.canvas.width/2, context.canvas.height/2);
     context.scale(window.devicePixelRatio, window.devicePixelRatio);
 

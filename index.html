@@ -15,13 +15,14 @@
             overscroll-behavior: none;
         }
 
-        canvas {
+        canvas, svg {
             width: 100vw;
             height: 100vh;
             height: 100dvh;
             position: absolute;
             top: 0;
             left: 0;
+            image-rendering: pixelated;
 
             touch-action: none;
             -webkit-touch-callout: none;
@@ -31,17 +32,77 @@
             -ms-user-select: none;
             user-select: none;
         }
+
+        canvas {
+            background: white;
+            -webkit-filter: url(#kill);
+        }
+
+        rect {
+            mix-blend-mode: hard-light;
+        }
     </style>
 </head>
 <body>
 
     <canvas></canvas>
+
+    <svg width="100vw" height="100vh" xmlns="http://www.w3.org/2000/svg">
+        <filter id="noise">
+            <feTurbulence
+                type="fractalNoise"
+                baseFrequency="0.65"
+                numOctaves="3"
+                stitchTiles="noStitch"
+            >
+                <animate
+                    attributeName="baseFrequency"
+                    values="0.5;0.65;0.45"
+                    dur="1s"
+                    repeatCount="indefinite"
+                />
+            </feTurbulence>
+        </filter>
+        <rect width="100%" height="100%" filter="url(#noise)" />
+    </svg>
+
+    <svg viewBox="0 0 0 0">
+        <filter id="kill">
+            <feColorMatrix type="matrix" 
+                result="red_"             
+                values="1 0 0 0 0
+                        0 0 0 0 0 
+                        0 0 0 0 0 
+                        0 0 0 1 0"
+            />
+            <feOffset in="red_" dx="0.5" dy="0" result="red"/>
+            <feColorMatrix type="matrix" 
+                in="SourceGraphic"             
+                result="green_"             
+                values="0 0 0 0 0
+                        0 1 0 0 0 
+                        0 0 0 0 0 
+                        0 0 0 1 0"
+            />
+            <feColorMatrix type="matrix" 
+                in="SourceGraphic"             
+                result="blue_"             
+                values="0 0 0 0 0
+                        0 0 0 0 0 
+                        0 0 1 0 0 
+                        0 0 0 1 0"
+            />
+            <feOffset in="blue_" dx="-1" dy="0" result="blue"/>
+            <feBlend mode="screen" in="red" in2="green_" result="redgreen"/>
+            <feBlend mode="screen" in="redgreen" in2="blue"/>
+        </filter>
+    </svg>
     
 </body>
 <script type="importmap">
     {
         "imports": {
-            "game": "./modules/game.js?v=0.214"
+            "game": "./modules/game.js?v=0.3"
         }
     }
 </script>
