@@ -3,7 +3,11 @@ import { update_keyboard } from "./keyboard.js";
 import { draw_beatmap, update_beatmap } from "./beatmap.js";
 import "./touch.js";
 
-var context = document.querySelector("canvas").getContext("2d");
+var context = document.querySelector("canvas").getContext("2d", {
+    alpha: false,
+    desynchronized: true
+});
+context.imageSmoothingEnabled = false;
 var aspect = 3/4;
 var game_width;
 var game_height;
@@ -25,7 +29,8 @@ function resize() {
 
 function draw(now) {
     context.resetTransform();
-    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+    context.fillStyle = "white";
+    context.fillRect(0, 0, context.canvas.width, context.canvas.height);
     context.translate(context.canvas.width/2, context.canvas.height/2);
     context.scale(window.devicePixelRatio, window.devicePixelRatio);
 
