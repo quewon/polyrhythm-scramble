@@ -5,11 +5,8 @@ import "./touch.js";
 
 var context = document.querySelector("canvas").getContext("2d");
 var aspect = 3/4;
-var width;
-var height;
-var grid;
-var rhythm_radius;
-var beat_radius;
+var game_width;
+var game_height;
 
 window.addEventListener("resize", resize);
 
@@ -17,17 +14,13 @@ function resize() {
     context.canvas.width = window.innerWidth * window.devicePixelRatio;
     context.canvas.height = window.innerHeight * window.devicePixelRatio;
 
-    width = Math.min(500, window.innerWidth);
-    height = Math.min(500, window.innerHeight);
-    if (width / aspect > height) {
-        width = height * aspect;
+    game_width = Math.min(500, window.innerWidth);
+    game_height = Math.min(500, window.innerHeight);
+    if (game_width / aspect > game_height) {
+        game_width = game_height * aspect;
     } else {
-        height = width / aspect;
+        game_height = game_width / aspect;
     }
-
-    grid = width / 2;
-    rhythm_radius = grid / 2 * 0.8;
-    beat_radius = grid / 30;
 }
 
 function draw(now) {
@@ -70,4 +63,4 @@ if (typeof performance === "function") {
     normal_update();
 }
 
-export { grid, rhythm_radius, beat_radius }
+export { game_width, game_height }

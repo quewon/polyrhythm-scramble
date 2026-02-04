@@ -3,25 +3,31 @@ import { keydown, keypressed, keyreleased, keyvalue } from "./keyboard.js";
 import audioContext from "./audioContext.js";
 import AudioSprite from "./AudioSprite.js";
 import ImageSprite from "./ImageSprite.js";
-import { grid, rhythm_radius, beat_radius } from "game";
+import { game_width, game_height } from "game";
 
 const VERSION = 0.2;
 
+const BEAT_RADIUS_SCALE = 1/60;
+const RHYTHM_RADIUS_SCALE = 1/5;
+
 const HIT_DISTANCE = 150;
-const TITLE_FONT_SCALE = 1 / 8;
-const INFO_FONT_SCALE = 1 / 12;
-const KEY_FONT_SCALE = 1 / 10;
+const TITLE_FONT_SCALE = 1/16;
+const INFO_FONT_SCALE = 1/24;
+const KEY_FONT_SCALE = 1/20;
 const COMBO_TEXT_COLOR = "lightgray";
-const COMBO_FONT_SCALE = 1;
+const COMBO_FONT_SCALE = 1/2;
 const MISS_PARTICLE_SCALE = 0.7;
 const UI_FONT = "'Arial Narrow', 'Babel Sans', sans-serif";
+const CHECKPOINT_FONT_SCALE = 1/20;
+const CHECKPOINT_FONT = "'Times New Roman', serif";
 const UI_LINEHEIGHT = 1.5;
-const TOP_LEVEL = 10;
-const SPARE_MEASURES = 2;
-const SECOND_CHANCE_SPARES = 1;
+const CHECKPOINT_LINEHEIGHT = 1.7;
+const SPARE_MEASURES = 8;
+const SECOND_CHANCE_SPARES = 2;
 const PADDING = 5;
 
-var clears = 5;
+// var clears = localStorage.getItem("top-clears") ? Math.floor(localStorage.getItem("top-clears") / 10) * 10 : 0;
+var clears = 9;
 var hiscore = 0;
 
 window.addEventListener("blur", () => {
@@ -29,6 +35,25 @@ window.addEventListener("blur", () => {
         pause_beatmap(beatmap.currentTime);
 })
 
+var checkpoints = [
+    {
+        image: new ImageSprite({ src: "res/images/checkpoints/fisher.jpg" }),
+        caption: "It's so nice to take a break...",
+        draw: (context, width, height) => {
+            context.save();
+            context.fillStyle = "white";
+            context.strokeStyle = "black";
+            context.beginPath();
+            let x = 280 / 1000;
+            let y = 274 / 672;
+            let r = 40 / 1000;
+            context.arc(-width/2 + width * x, -height/2 + height * y, width * r, 0, Math.PI*2);
+            context.fill();
+            context.stroke();
+            context.restore();
+        }
+    }
+]
 var soundpacks = [
     {
         hitSounds: [
@@ -96,7 +121,6 @@ var soundpacks = [
 var sprites = {
     hitImage: new ImageSprite({ src: "res/images/hit.png" }),
     missImage: new ImageSprite({ src: "res/images/miss.png" }),
-    winImage: new ImageSprite({ src: "res/images/win.jpg" })
 }
 var resources_loaded = false;
 var beatmap;
@@ -115,6 +139,9 @@ function get_resources_loaded() {
         if (!soundpack.metronomeSound.loaded) return false;
         if (!soundpack.countinSound.loaded) return false;
     }
+    for (let checkpoint of checkpoints) {
+        if (!checkpoint.image.loaded) return false;
+    }
     return true;
 }
 
@@ -124,43 +151,39 @@ function generate_beatmap() {
     let pick;
     let keys;
 
-    if (clears === 0) {
-        bpm = 80;
-    } else if (clears < 4) {
-        bpm = 60 + Math.round(Math.random() * 40);
-    } else if (clears < 6) {
-        bpm = 60 + Math.round(Math.random() * 60);
-    } else if (clears < 8) {
-        bpm = 80 + Math.round(Math.random() * 60);
-    } else if (clears < 10) {
-        bpm = 80 + Math.round(Math.random() * 80);
-    } else {
-        bpm = 100 + Math.round(Math.random() * 60);
-    }
-
-    if (clears < 1) {
-        pick = [1, 2];
-    } else if (clears < 3) {
-        pick = [1, 2, 3, 4];
-    } else if (clears < 5) {
-        pick = [1, 2, 4, 5];
-    } else if (clears < 7) {
-        pick = [2, 3, 4, 5, 6]
-    } else if (clears < 9) {
-        pick = [2, 3, 4, 5, 6, 8];
-    } else {
-        pick = [2, 3, 4, 5, 6, 7, 8];
-    }
-    
-    if (clears < 4) {
+    if (clears < 10) {
         keys = 2;
-    } else if (clears < 8) {
+    } else if (clears < 20) {
         keys = 2 + Math.ceil(Math.random() * 1);
     } else {
         keys = 2 + Math.ceil(Math.random() * 2);
     }
 
-    let measure = 60 / bpm * 4000;
+    if (clears % 10 === 0) {
+        bpm = 80;
+    } else if (clears % 10 < 4) {
+        bpm = 60 + Math.round(Math.random() * 40);
+    } else if (clears % 10 < 6) {
+        bpm = 60 + Math.round(Math.random() * 60);
+    } else if (clears % 10 < 8) {
+        bpm = 80 + Math.round(Math.random() * 60);
+    } else {
+        bpm = 80 + Math.round(Math.random() * 80);
+    }
+
+    if (clears % 10 < 1) {
+        pick = [1, 2];
+    } else if (clears % 10 < 3) {
+        pick = [1, 2, 3, 4];
+    } else if (clears % 10 < 5) {
+        pick = [1, 2, 4, 5];
+    } else if (clears % 10 < 7) {
+        pick = [2, 3, 4, 5, 6]
+    } else if (clears % 10 < 9) {
+        pick = [2, 3, 4, 5, 6, 8];
+    } else {
+        pick = [2, 3, 4, 5, 6, 7, 8];
+    }
 
     function random_subdivisions() {
         let subdivisions = pick.splice(Math.random() * pick.length | 0, 1)[0];
@@ -196,6 +219,8 @@ function generate_beatmap() {
         }
         return a;
     }
+
+    let measure = 60 / bpm * 4000;
 
     beatmap = {
         bpm: bpm,
@@ -271,7 +296,13 @@ function clear_beatmap(now) {
 }
 
 function abc_blocks(context, text, size, cx, cy, t, noStroke) {
-    let fonts = ["'Times New Roman', serif", "'Arial', 'Helvetica', sans-serif", "'Courier', monospace", UI_FONT, "'Papyrus', 'Comic Sans MS'"];
+    let fonts = [
+        "'Times New Roman', serif", 
+        "'Arial', 'Helvetica', sans-serif", 
+        "'Courier New', 'Courier', monospace", 
+        UI_FONT, 
+        "'Papyrus', 'Comic Sans MS'"
+    ];
     let styles = ["", "italic ", "bold "];
 
     t = t || 0;
@@ -315,8 +346,9 @@ function abc_blocks(context, text, size, cx, cy, t, noStroke) {
 let introAnimationStartTime;
 
 function draw_intro(context) {
+    let hw = game_width/2;
     context.fillStyle = "black";
-    context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
+    context.font = (game_width * INFO_FONT_SCALE) + "px " + UI_FONT;
 
     context.textBaseline = "bottom";
     context.textAlign = "left";
@@ -331,16 +363,18 @@ function draw_intro(context) {
         introAnimationStartTime = new Date().getTime();
     }
 
-    const lineheight = grid * INFO_FONT_SCALE * 1.2;
+    const lineheight = game_width * INFO_FONT_SCALE * 1.2;
     context.textBaseline = "middle";
     context.textAlign = "center";
+
+    let rhythm_radius = game_width * RHYTHM_RADIUS_SCALE;
     
     let hiscore = localStorage.getItem("hiscore");
     if (hiscore) {
         context.save();
         context.translate(
-            -grid/2 + rhythm_radius/3,
-            -grid/4 + rhythm_radius/6
+            -hw/2 + rhythm_radius/3,
+            -hw/4 + rhythm_radius/6
         );
         context.strokeStyle = "black";
         context.beginPath();
@@ -374,8 +408,8 @@ function draw_intro(context) {
     if (topclears) {
         context.save();
         context.translate(
-            grid/2 - rhythm_radius/2,
-            grid/4 - rhythm_radius/4
+            hw/2 - rhythm_radius/2,
+            hw/4 - rhythm_radius/4
         );
         context.strokeStyle = "black";
         context.beginPath();
@@ -409,19 +443,19 @@ function draw_intro(context) {
         context.restore();
     }
 
-    abc_blocks(context, "polyrhythm", grid * TITLE_FONT_SCALE, 0, -grid/1.2, null, true);
-    abc_blocks(context, "scramble", grid * TITLE_FONT_SCALE, 0, -grid/1.2 + grid * TITLE_FONT_SCALE + PADDING, 3, true);
+    abc_blocks(context, "polyrhythm", game_width * TITLE_FONT_SCALE, 0, -hw/1.2, null, true);
+    abc_blocks(context, "scramble", game_width * TITLE_FONT_SCALE, 0, -hw/1.2 + game_width * TITLE_FONT_SCALE + PADDING, 3, true);
 
     context.textAlign = "center";
     context.textBaseline = "bottom";
-    context.fillText("[ANY KEY] TO BEGIN", 0, grid/1.2);
+    context.fillText("[ANY KEY] TO BEGIN", 0, hw/1.2);
 
     if (!hiscore || !topclears) {
         let t = Math.floor((new Date().getTime() - introAnimationStartTime) / 500);
         
         context.beginPath();
         context.strokeStyle = "black";
-        let r = grid/3;
+        let r = hw/3;
         if (t % 4 === 3) {
             context.moveTo(-r, 0);
             context.lineTo(0, -r);
@@ -429,14 +463,14 @@ function draw_intro(context) {
             context.lineTo(0, r);
             context.closePath();
         } else if (t % 4 === 2) {
-            context.moveTo(0, -r + grid/10);
+            context.moveTo(0, -r + hw/10);
             context.lineTo(
                 Math.cos(Math.PI/2 - Math.PI/3) * r,
-                Math.sin(Math.PI/2 - Math.PI/3) * r + grid/15
+                Math.sin(Math.PI/2 - Math.PI/3) * r + hw/15
             );
             context.lineTo(
                 Math.cos(Math.PI/2 + Math.PI/3) * r,
-                Math.sin(Math.PI/2 + Math.PI/3) * r + grid/15
+                Math.sin(Math.PI/2 + Math.PI/3) * r + hw/15
             );
             context.closePath();
         } else if (t % 4 === 1) {
@@ -451,93 +485,111 @@ function draw_intro(context) {
 
 function draw_pausemenu(context) {
     context.fillStyle = "black";
-    context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
+    context.font = (game_width * INFO_FONT_SCALE) + "px " + UI_FONT;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillText("PAUSED", 0, 0);
 }
 
 function draw_gameover(context) {
-    let lineheight = grid * INFO_FONT_SCALE * UI_LINEHEIGHT;
-
+    let lineheight = game_width * INFO_FONT_SCALE * UI_LINEHEIGHT;
+    let hw = game_width/2;
     context.fillStyle = "black";
-    context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
+    context.font = (game_width * INFO_FONT_SCALE) + "px " + UI_FONT;
+
     context.textAlign = "center";
     context.textBaseline = "top";
-    context.fillText("GAME OVER", 0, -grid);
+    context.fillText("GAME OVER", 0, -hw + PADDING);
 
-    sprites.missImage.draw(context, 0, 0, grid, grid);
+    sprites.missImage.draw(context, 0, 0, hw, hw);
 
     context.textBaseline = "bottom";
-    context.fillText("[ANY KEY] TO RESTART", 0, grid - PADDING - lineheight);
-    context.fillText("[ESC] TO RETURN TO MAIN", 0, grid - PADDING);
+    context.fillText("[ANY KEY] TO RESTART", 0, hw - PADDING - lineheight);
+    context.fillText("[ESC] TO RETURN TO MAIN", 0, hw - PADDING);
+}
+
+function draw_checkpoint(context) {
+    let lineheight = game_width * INFO_FONT_SCALE * UI_LINEHEIGHT;
+    let hh = game_height/2;
+    context.fillStyle = "black";
+    context.font = (game_width * INFO_FONT_SCALE) + "px " + UI_FONT;
+
+    context.textAlign = "center";
+    context.textBaseline = "top";
+    context.fillText("CHECKPOINT", 0, -hh + PADDING);
+
+    context.textBaseline = "bottom";
+    context.fillText("[ANY KEY] TO KEEP GOING", 0, hh - PADDING - lineheight);
+    context.fillText("[ESC] TO RETURN TO MAIN", 0, hh - PADDING);
+
+    let checkpoint = checkpoints[clears / 10 % checkpoints.length | 0];
+    lineheight = game_width * CHECKPOINT_FONT_SCALE * CHECKPOINT_LINEHEIGHT;
+    context.font = "italic " + (game_width * CHECKPOINT_FONT_SCALE) + "px " + CHECKPOINT_FONT;
+    let width = game_width - PADDING * 2;
+    let height = width * (checkpoint.image.height / checkpoint.image.width);
+    let y = -lineheight;
+
+    checkpoint.image.draw(context, 0, y, width, height);
+
+    context.textBaseline = "bottom";
+    context.fillText(checkpoint.caption, 0, y + height/2 + lineheight);
+
+    context.save();
+    context.translate(0, y);
+    if (checkpoint.draw)
+        checkpoint.draw(context, width, height);
+    context.restore();
 }
 
 function draw_score(context, now) {
-    let time = now - beatmap.currentTime;
-    time = Math.min(1000, time);
-    let t = time / 1000;
-    let lineheight = grid * INFO_FONT_SCALE * UI_LINEHEIGHT;
-
-    if (clears === 10) {
-        sprites.winImage.draw(context, 0, 0, grid * 3 * t, grid * 3 * (sprites.winImage.height / sprites.winImage.width) * t);
-    } else {
-        sprites.hitImage.draw(context, grid / 2 * t, 0, grid, grid);
-    }
-
+    let lineheight = game_width * INFO_FONT_SCALE * UI_LINEHEIGHT;
+    let hw = game_width/2;
     context.fillStyle = "black";
+    context.font = (game_width * INFO_FONT_SCALE) + "px " + UI_FONT;
 
-    context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
     context.textAlign = "center";
     context.textBaseline = "top";
-    if (clears === 10) {
-        context.fillText("YOU WIN", 0, -grid);
-    } else {
-        context.fillText(clears + " ROUND(S) CLEARED", 0, -grid + PADDING);
-    }
+    context.fillText(clears + " ROUND(S) CLEARED", 0, -hw + PADDING);
+    context.fillText("SUM SCORE : " + hiscore, 0, -hw + PADDING + lineheight);
 
-    context.fillText("SUM SCORE : " + hiscore, 0, -grid + PADDING + lineheight);
+    let t = Math.min(1000, now - beatmap.currentTime) / 1000;
+
+    sprites.hitImage.draw(context, hw / 2 * t, 0, hw, hw);
     
-    if (beatmap.spareMeasures > 0) {
-        context.textBaseline = "middle";
-        let x = clears === 10 ? 0 : -grid / 2 * t;
-        let lines = [
-            beatmap.bpm + " BPM",
-            beatmap.rhythms[0].subdivisions.length + ":" + beatmap.rhythms[1].subdivisions.length,
-            beatmap.measuresUsed + " MEASURES MISSED",
-            beatmap.score + " POINTS"
-        ]
-
-        let width = 0;
-        let padding = grid / 16;
-        let height = lineheight * lines.length;
-        for (let i=0; i<lines.length; i++) {
-            let mm = context.measureText(lines[i]);
-            if (mm.width > width) width = mm.width;
-        }
-        context.save();
-        context.fillStyle = "white";
-        context.strokeStyle = "black";
-        context.beginPath();
-        context.rect(x - width/2 - padding, -height/2 - padding, width + padding * 2, height + padding * 2);
-        context.fill();
-        context.stroke();
-        context.restore();
-        for (let i=0; i<lines.length; i++) {
-            context.fillText(lines[i], x, -height/2 + lineheight * (i + 0.5));
-        }
+    let lines = [
+        beatmap.bpm + " BPM",
+        beatmap.rhythms[0].subdivisions.length + ":" + beatmap.rhythms[1].subdivisions.length,
+        beatmap.measuresUsed + " MEASURES MISSED",
+        beatmap.score + " POINTS"
+    ]
+    context.textBaseline = "middle";
+    let x = clears === 10 ? 0 : -hw / 2 * t;
+    let width = 0;
+    let height = lineheight * lines.length;
+    for (let i=0; i<lines.length; i++) {
+        let mm = context.measureText(lines[i]);
+        if (mm.width > width) width = mm.width;
+    }
+    context.save();
+    context.fillStyle = "white";
+    context.strokeStyle = "black";
+    context.beginPath();
+    context.rect(x - width/2 - PADDING, -height/2 - PADDING, width + PADDING * 2, height + PADDING * 2);
+    context.fill();
+    context.stroke();
+    context.restore();
+    for (let i=0; i<lines.length; i++) {
+        context.fillText(lines[i], x, -height/2 + lineheight * (i + 0.5));
     }
 
     context.textBaseline = "bottom";
-    if (clears === 10) {
-        context.fillText("[ANY KEY] TO KEEP GOING", 0, grid - PADDING - lineheight);
-    } else {
-        context.fillText("[ANY KEY] TO CONTINUE", 0, grid - PADDING - lineheight);
-    }
-    context.fillText("[ESC] TO RETURN TO MAIN", 0, grid - PADDING);
+    context.fillText("[ANY KEY] TO CONTINUE", 0, hw - PADDING - lineheight);
+    context.fillText("[ESC] TO RETURN TO MAIN", 0, hw - PADDING);
 }
 
 function draw_rhythm_shape(context, rhythm, rx, ry) {
+    let rhythm_radius = game_width * RHYTHM_RADIUS_SCALE;
+
     if (rhythm.subdivisions.length === 1) {
         context.beginPath();
         context.arc(rx, ry, rhythm_radius, 0, Math.PI * 2);
@@ -575,11 +627,14 @@ function rhythm_context_save(context, rhythm) {
     if (beatmap.adjustedElapsed < rhythm.spawnTime) {
         context.globalAlpha = 1 - (rhythm.spawnTime - beatmap.adjustedElapsed) / beatmap.spawnLeadup;
     }
-    context.translate(rhythm.position[0] * grid, rhythm.position[1] * grid);
+    context.translate(rhythm.position[0] * game_width/2, rhythm.position[1] * game_width/2);
     return true;
 }
 
 function draw_circles(context) {
+    let rhythm_radius = game_width * RHYTHM_RADIUS_SCALE;
+    let beat_radius = game_width * BEAT_RADIUS_SCALE;
+    
     for (let rhythm of beatmap.rhythms) {
         if (!rhythm_context_save(context, rhythm))
             continue;
@@ -644,12 +699,12 @@ function draw_key_text(context, rhythm) {
                 context.fillStyle = "lightgray";
             context.textAlign = "center";
             context.textBaseline = "middle";
-            context.font = (grid * KEY_FONT_SCALE) + "px " + UI_FONT;
+            context.font = (game_width * KEY_FONT_SCALE) + "px " + UI_FONT;
             context.strokeStyle = "white";
             context.strokeText(keyText, 0, 0);
             context.fillText(keyText, 0, 0);
         } else {
-            abc_blocks(context, keyText, grid * KEY_FONT_SCALE, 0, 0, rhythm.subdivisions.length + rhythm.combo);
+            abc_blocks(context, keyText, game_width * KEY_FONT_SCALE, 0, 0, rhythm.subdivisions.length + rhythm.combo);
         }
     }
 
@@ -659,6 +714,8 @@ function draw_key_text(context, rhythm) {
 function draw_rhythm(context, rhythm) {
     if (!rhythm_context_save(context, rhythm)) return;
 
+    let rhythm_radius = game_width * RHYTHM_RADIUS_SCALE;
+    let beat_radius = game_width * BEAT_RADIUS_SCALE;
     let dot_alpha = Math.max(Math.min(1 - (rhythm.spawnTime - beatmap.adjustedElapsed) / beat_length(rhythm), 1), 0);
 
     if (!('keyCode' in rhythm))
@@ -757,8 +814,8 @@ function draw_rhythm(context, rhythm) {
     //     let a = (i * beat_length(rhythm) - cap) / beatmap.measure;
     //     let b = (i * beat_length(rhythm) + cap) / beatmap.measure;
     //     context.beginPath();
-    //     context.arc(rhythm.position[0] * grid, rhythm.position[1] * grid, rhythm_radius, a * Math.PI*2 - Math.PI/2, b * Math.PI*2 - Math.PI/2);
-    //     context.lineTo(rhythm.position[0] * grid, rhythm.position[1] * grid);
+    //     context.arc(rhythm.position[0] * game_width/2, rhythm.position[1] * game_width/2, rhythm_radius, a * Math.PI*2 - Math.PI/2, b * Math.PI*2 - Math.PI/2);
+    //     context.lineTo(rhythm.position[0] * game_width/2, rhythm.position[1] * game_width/2);
     //     context.closePath();
     //     context.fill();
     // }
@@ -778,20 +835,22 @@ function draw_beatmap(context, now) {
                 if (beatmap.roundCombo === 0) {
                     context.save();
 
-                    context.font = (grid * INFO_FONT_SCALE) + "px " + UI_FONT;
-                    context.textAlign = "right";
-                    context.textBaseline = "top";
+                    let hw = game_width/2;
                     context.fillStyle = "black";
-                    context.fillText(beatmap.bpm + " BPM", grid - PADDING, -grid);
+                    context.font = (game_width * INFO_FONT_SCALE) + "px " + UI_FONT;
+
+                    context.textBaseline = "top";
                     context.textAlign = "left";
-                    context.fillText("LEVEL " + Math.min(clears, TOP_LEVEL), -grid + PADDING, -grid + PADDING);
+                    context.fillText("LEVEL " + clears, -hw + PADDING, -hw + PADDING);
+                    context.textAlign = "right";
+                    context.fillText(beatmap.bpm + " BPM", hw - PADDING, -hw + PADDING);
 
                     context.textAlign = "center";
                     context.textBaseline = "middle";
                     for (let rhythm of beatmap.rhythms) {
-                        context.fillText(rhythm.subdivisions.length, rhythm.position[0] * grid, grid/1.6);
+                        context.fillText(rhythm.subdivisions.length, rhythm.position[0] * hw, hw/1.6);
                     }
-                    context.fillText(":", 0, grid/1.6)
+                    context.fillText(":", 0, hw/1.6)
 
                     context.restore();
                 }
@@ -799,13 +858,13 @@ function draw_beatmap(context, now) {
                 if (beatmap.roundCombo === 0 || beatmap.spareMeasures < SPARE_MEASURES) {
                     context.save();
                     context.strokeStyle = "black";
-                    let fullwidth = (grid - PADDING) * 2;
-                    let gap = grid/60;
+                    let fullwidth = game_width - PADDING * 2;
+                    let gap = game_width/120;
                     let width = fullwidth / SPARE_MEASURES - gap;
-                    let height = grid/16;
+                    let height = game_width/32;
                     for (let i=0; i<SPARE_MEASURES; i++) {
                         context.beginPath();
-                        context.rect((i - SPARE_MEASURES/2) * (width + gap) + gap/2, grid - height - PADDING, width, height);
+                        context.rect((i - SPARE_MEASURES/2) * (width + gap) + gap/2, game_width/2 - height - PADDING, width, height);
                         if (i < beatmap.spareMeasures - 1) {
                             context.fillStyle = "yellow";
                             context.fill();
@@ -823,7 +882,9 @@ function draw_beatmap(context, now) {
                 draw_pausemenu(context);
         } else {
             if (beatmap.spareMeasures <= 0)
-                draw_gameover(context)
+                draw_gameover(context);
+            else if (clears % 10 === 0)
+                draw_checkpoint(context);
             else
                 draw_score(context, now);
         }
@@ -1197,7 +1258,7 @@ function spawn_secondchance_particle() {
     const lifetime = beatmap.measure;
     spawn_particle({
         lifetime: lifetime,
-        size: grid / 4,
+        size: game_width/8,
         draw: function(context) {
             context.save();
             context.fillStyle = "lightgray";
@@ -1223,9 +1284,10 @@ function spawn_roundcombo_particle() {
     offscreenContext.translate(image.width/2, image.height/2);
     offscreenContext.scale(window.devicePixelRatio, window.devicePixelRatio);
 
+    let hw = game_width/2;
     for (const rhythm of beatmap.rhythms) {
-        let x = (rhythm.position[0] + (Math.random() - 0.5)) * grid;
-        let y = (rhythm.position[1] + (Math.random() * 2 - 1)) * grid;
+        let x = (rhythm.position[0] + (Math.random() - 0.5)) * hw;
+        let y = (rhythm.position[1] + (Math.random() * 2 - 1)) * hw;
         let scale = 2;
 
         offscreenContext.save();
@@ -1234,7 +1296,7 @@ function spawn_roundcombo_particle() {
         offscreenContext.globalCompositeOperation = "lighter";
         draw_rhythm_shape(offscreenContext, rhythm, 0, 0);
         if (rhythm.subdivisions.length === 2) {
-            offscreenContext.lineWidth = grid / 8;
+            offscreenContext.lineWidth = hw / 8;
             offscreenContext.strokeStyle = rhythm.color;
             offscreenContext.stroke();
         } else {
@@ -1260,7 +1322,7 @@ function spawn_roundcombo_particle() {
     for (let rhythm of beatmap.rhythms) {
         subdivisionsSum += rhythm.subdivisions.length;
     }
-    abc_blocks(offscreenContext, 5 - beatmap.roundCombo + "", grid * COMBO_FONT_SCALE, 0, -grid, beatmap.roundCombo + subdivisionsSum, true);
+    abc_blocks(offscreenContext, 5 - beatmap.roundCombo + "", game_width * COMBO_FONT_SCALE, 0, -hw, beatmap.roundCombo + subdivisionsSum, true);
     offscreenContext.restore();
 
     spawn_particle({
@@ -1280,12 +1342,14 @@ function spawn_roundcombo_particle() {
 function spawn_miss_particle(rhythm, subdivision) {
     const lifetime = 60 / beatmap.bpm * 1000;
     let angle = (subdivision * Math.PI * 2 / rhythm.subdivisions.length) - Math.PI / 2;
+    let rhythm_radius = game_width * RHYTHM_RADIUS_SCALE;
+    let beat_radius = game_width * BEAT_RADIUS_SCALE;
 
     // miss image
     spawn_particle({
         lifetime: lifetime,
-        x: rhythm.position[0] * grid + rhythm_radius * Math.cos(angle),
-        y: rhythm.position[1] * grid + rhythm_radius * Math.sin(angle),
+        x: rhythm.position[0] * game_width/2 + rhythm_radius * Math.cos(angle),
+        y: rhythm.position[1] * game_width/2 + rhythm_radius * Math.sin(angle),
         imageSize: beat_radius * 8 * MISS_PARTICLE_SCALE,
         r: beat_radius * 2 * MISS_PARTICLE_SCALE,
         rotation: Math.random() * Math.PI - Math.PI/2,
@@ -1306,8 +1370,8 @@ function spawn_hit_particle(rhythm, subdivision) {
     if (rhythm.combo >= rhythm.subdivisions.length) {
         spawn_particle({
             lifetime: beat_length(rhythm),
-            x: rhythm.position[0] * grid,
-            y: rhythm.position[1] * grid,
+            x: rhythm.position[0] * game_width/2,
+            y: rhythm.position[1] * game_width/2,
             draw: function(context) {
                 context.save();
                 context.globalAlpha = this.lifetime / beat_length(rhythm);
@@ -1327,6 +1391,8 @@ function spawn_hit_particle(rhythm, subdivision) {
         })
     }
 
+    let rhythm_radius = game_width * RHYTHM_RADIUS_SCALE;
+    let beat_radius = game_width * BEAT_RADIUS_SCALE;
     let angle = (subdivision * Math.PI * 2 / rhythm.subdivisions.length) - Math.PI / 2;
     const lifetime = 60 / beatmap.bpm * 1000;
 
@@ -1334,8 +1400,8 @@ function spawn_hit_particle(rhythm, subdivision) {
     var gradient;
     spawn_particle({
         lifetime: lifetime,
-        x: rhythm.position[0] * grid,
-        y: rhythm.position[1] * grid,
+        x: rhythm.position[0] * game_width/2,
+        y: rhythm.position[1] * game_width/2,
         draw: function(context) {
             if (!gradient) {
                 let x = rhythm_radius * Math.cos(angle);
@@ -1365,8 +1431,8 @@ function spawn_hit_particle(rhythm, subdivision) {
     // hit image
     spawn_particle({
         lifetime: lifetime,
-        x: rhythm.position[0] * grid + rhythm_radius * Math.cos(angle),
-        y: rhythm.position[1] * grid + rhythm_radius * Math.sin(angle),
+        x: rhythm.position[0] * game_width/2 + rhythm_radius * Math.cos(angle),
+        y: rhythm.position[1] * game_width/2 + rhythm_radius * Math.sin(angle),
         imageSize: beat_radius * 8,
         r: beat_radius * 2,
         rotation: Math.random() * Math.PI - Math.PI/2,
