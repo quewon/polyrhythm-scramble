@@ -17,11 +17,11 @@ const MISS_PARTICLE_SCALE = 0.7;
 const UI_FONT = "'Arial Narrow', 'Babel Sans', sans-serif";
 const UI_LINEHEIGHT = 1.5;
 const TOP_LEVEL = 10;
-const SPARE_MEASURES = 8;
-const SECOND_CHANCE_SPARES = 2;
+const SPARE_MEASURES = 2;
+const SECOND_CHANCE_SPARES = 1;
 const PADDING = 5;
 
-var clears = 0;
+var clears = 5;
 var hiscore = 0;
 
 window.addEventListener("blur", () => {
@@ -854,7 +854,7 @@ function handle_miss(rhythm, beat) {
                 delete beatmap.spareUsedTime;
                 delete beatmap.metronomePlayed;
                 for (let rhythm of beatmap.rhythms) {
-                    delete rhythm.combo;
+                    rhythm.combo = 0;
                     delete rhythm.previousBeat;
                     delete rhythm.previousMiss;
                     delete rhythm.previousHit;
