@@ -15,13 +15,15 @@ function particles_count() {
 
 function draw_particles(context) {
     for (let particle of particles) {
-        particle.draw(context);
+        if (particle.draw)
+            particle.draw(context);
     }
 }
 
 function update_particles(delta) {
     for (let particle of particles) {
-        particle.update(delta);
+        if (particle.update)
+            particle.update(delta);
         particle.lifetime -= delta;
     }
 

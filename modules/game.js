@@ -1,8 +1,7 @@
 import { draw_particles, update_particles } from "./particle.js";
-import { update_keyboard } from "./keyboard.js";
+import { update_keyboard } from "./input/keyboard.js";
+import "./input/touch.js";
 import { draw_beatmap, update_beatmap } from "./beatmap.js";
-import "./touch.js";
-import ImageSprite from "./ImageSprite.js";
 
 var context = document.querySelector("canvas").getContext("2d", {
     alpha: true,
